@@ -1,6 +1,6 @@
 
 
-#include "queue.h"
+#include "sys_queue.h"
 
 /***************************
  * 	Queue[5] (target buffer)
@@ -58,7 +58,7 @@ bool _QUE_Insert(gsg_queueObject_t *qObj, uint8_t *data)
 				if(qObj->todo == qObj->length)	//Re-start from 0 is allowed only in Queue type
 					qObj->todo = 0;
 
-			printf("\nQi="); for(uint16_t j=0 ; j<(qObj->unit_size*qObj->length) ; j++){if((j%qObj->unit_size)==0)printf("  ",*(qObj->buffer+j)); printf("%X",*(qObj->buffer+j));}
+			//printf("\nQi="); for(uint16_t j=0 ; j<(qObj->unit_size*qObj->length) ; j++){if((j%qObj->unit_size)==0)printf("  ",*(qObj->buffer+j)); printf("%X",*(qObj->buffer+j));}
 		}
 		else if(qObj->count == qObj->length)
 		{

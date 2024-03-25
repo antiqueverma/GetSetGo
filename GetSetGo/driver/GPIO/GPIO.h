@@ -1,0 +1,113 @@
+/*
+ * GPIO.h
+ *
+ * Created: 14-Mar-24 2:44:47 PM
+ *  Author: qumxv8
+ */ 
+
+
+#ifndef GSG_GPIO_H_
+#define GSG_GPIO_H_
+
+#include "sys_config.h"
+
+#if (SYS_MCU_SERIES == 1)
+//Basic stage to write registers
+#define __SET_BIT__(REG,GROUP,PIN)		((REG##GROUP) |= (1<<PIN))
+#define __RESET_BIT__(REG,GROUP,PIN)	((REG##GROUP) &= ~(1<<PIN))
+#define __TOGGLE_BIT__(REG,GROUP,PIN)	((REG##GROUP) ^= (1<<PIN))
+#define __READ_BIT__(REG,GROUP,PIN)		(((REG##GROUP)>>PIN)&0x01)
+#define __WRITE_BYTE__(REG,GROUP,VALUE)	((REG##GROUP) = (VALUE&0xFF))
+#define __READ_BYTE__(REG,GROUP)		(REG##GROUP)
+
+//Interim stage for preprocessor expansion
+#define _OUTPUT_PIN_(GROUP,PIN)			__SET_BIT__(DDR,GROUP,PIN)
+#define _INPUT_PIN_(GROUP,PIN)			__RESET_BIT__(DDR,GROUP,PIN)
+#define _SET_PIN_(GROUP,PIN)			__SET_BIT__(PORT,GROUP,PIN)
+#define _RESET_PIN_(GROUP,PIN)			__RESET_BIT__(PORT,GROUP,PIN)
+#define _TOGGLE_PIN_(GROUP,PIN)			__TOGGLE_BIT__(PORT,GROUP,PIN)
+#define _WRITE_GROUP_(GROUP,VAL)		__WRITE_BYTE__(PORT,GROUP,VAL)
+#define _READ_PIN_(GROUP,PIN)			__READ_BIT__(PIN,GROUP,PIN)
+#define _READ_GROUP_(GROUP)				__READ_BYTE__(PIN,GROUP)
+
+/*User Accessible API*/
+#define GPIO_OUTPUT(SIGNAL)				_OUTPUT_PIN_(SIGNAL)
+#define GPIO_INPUT(SIGNAL)				_INPUT_PIN_(SIGNAL)
+#define GPIO_SET(SIGNAL)				_SET_PIN_(SIGNAL)
+#define GPIO_RESET(SIGNAL)				_RESET_PIN_(SIGNAL)
+#define GPIO_TOGGLE(SIGNAL)				_TOGGLE_PIN_(SIGNAL)
+#define GPIO_READ_PIN(SIGNAL)			_READ_PIN_(SIGNAL)
+#define GPIO_WRITE_PORT(SIGNAL,VALUE)	_WRITE_GROUP_(SIGNAL,VALUE)
+#define GPIO_READ_PORT(SIGNAL)			_READ_GROUP_(SIGNAL)
+
+#elif (SYS_MCU_SERIES == 2)
+
+//Basic stage to write registers
+#define __SET_BIT__(REG,GROUP,PIN)			((GPIO##GROUP->REG) |= (1<<PIN))
+#define __RESET_BIT__(REG,GROUP,PIN)		((GPIO##GROUP->REG) &= ~(1<<PIN))
+#define __TOGGLE_BIT__(REG,GROUP,PIN)		((GPIO##GROUP->REG) ^= (1<<PIN))
+#define __WRITE_BYTE__(REG,GROUP,VALUE)		((GPIO##GROUP->REG) = (VALUE&0xFF))
+
+#define __READ_BIT__(REG,GROUP,PIN)			((GPIO##GROUP->REG)	>>PIN)&0x01
+#define __READ_BYTE__(REG,GROUP)			((GPIO##GROUP->REG))
+
+#define __SET_2BITS__(REG,GROUP,PIN,VAL)	((GPIO##GROUP->REG) |= (VAL<<(PIN*2)))
+#define __RESET_2BITS__(REG,GROUP,PIN,VAL)	((GPIO##GROUP->REG) &= ~(VAL<<(PIN*2)))
+
+
+
+//Interim stage for preprocessor expansion
+//MODER Register functions
+#define _INPUT_PIN_(GROUP,PIN)			__RESET_2BITS__(MODER,GROUP,PIN,0x03)
+#define _OUTPUT_PIN_(GROUP,PIN)			__SET_2BITS__(MODER,GROUP,PIN,0x01)
+#define _ANALOG_PIN_(GROUP,PIN)			__SET_2BITS__(MODER,GROUP,PIN,0x03)
+
+//OTYPER Register Functions
+#define _OPEN_DRAIN_PIN_(GROUP,PIN)		__SET_BIT__(OTYPER,GROUP,PIN)
+#define _PUSH_PULL_PIN_(GROUP,PIN)		__RESET_BIT__(OTYPER,GROUP,PIN)
+
+//ODR Register functions
+#define _SET_PIN_(GROUP,PIN)			__SET_BIT__(ODR,GROUP,PIN)
+#define _RESET_PIN_(GROUP,PIN)			__RESET_BIT__(ODR,GROUP,PIN)
+#define _TOGGLE_PIN_(GROUP,PIN)			__TOGGLE_BIT__(ODR,GROUP,PIN)
+#define _WRITE_GROUP_(GROUP,VAL)		__WRITE_BYTE__(ODR,GROUP,VAL)
+
+//PUPDR Register functions
+#define	_PULLNONE_PIN_(GROUP,PIN)		__RESET_2BITS__(PUPDR,GROUP,PIN,0x03)
+#define	_PULLUP_PIN_(GROUP,PIN)			__SET_2BITS__(MODER,GROUP,PIN,0x01)
+#define	_PULLDOWN_PIN_(GROUP,PIN)		__SET_2BITS__(MODER,GROUP,PIN,0x02)
+
+//IDR Register functions
+#define _READ_PIN_(GROUP,PIN)			__READ_BIT__(IDR,GROUP,PIN)
+#define _READ_GROUP_(GROUP)				__READ_BYTE__(IDR,GROUP)
+
+
+/*User Accessible API*/
+//MODER Register
+#define GPIO_OUTPUT(SIGNAL)				_OUTPUT_PIN_(SIGNAL)
+#define GPIO_INPUT(SIGNAL)				_INPUT_PIN_(SIGNAL)
+#define GPIO_ANALOG(SIGNAL)				_ANALOG_PIN_(SIGNAL)
+
+//OTYPER Register
+#define GPIO_OPEN_DRAIN(SIGNAL)			_OPEN_DRAIN_PIN_(SIGNAL)
+#define GPIO_PUSH_PULL(SIGNAL)			_PUSH_PULL_PIN_(SIGNAL)
+
+//ODR Register
+#define GPIO_SET(SIGNAL)				_SET_PIN_(SIGNAL)
+#define GPIO_RESET(SIGNAL)				_RESET_PIN_(SIGNAL)
+#define GPIO_TOGGLE(SIGNAL)				_TOGGLE_PIN_(SIGNAL)
+#define GPIO_WRITE_PORT(SIGNAL,VALUE)	_WRITE_GROUP_(SIGNAL,VALUE)
+
+//PUPDR Register
+#define GPIO_PULL_UP(SIGNAL)			_PULLUP_PIN_(SIGNAL)
+#define GPIO_PULL_DOWN(SIGNAL)			_PULLDOWN_PIN_(SIGNAL)
+#define GPIO_PULL_NONE(SIGNAL)			_PULLNONE_PIN_(SIGNAL)
+
+//IDR Register
+#define GPIO_READ_PIN(SIGNAL)			_READ_PIN_(SIGNAL)
+#define GPIO_READ_PORT(SIGNAL)			_READ_GROUP_(SIGNAL)
+#endif
+
+
+
+#endif /* GPIO_H_ */
