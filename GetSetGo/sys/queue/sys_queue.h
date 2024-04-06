@@ -4,7 +4,7 @@
 #define GSG_QUEUE_H_
 
 
-#include "sys_core.h"
+#include "sys_config.h"
 
 
 typedef struct{
