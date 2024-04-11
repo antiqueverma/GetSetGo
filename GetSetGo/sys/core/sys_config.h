@@ -12,24 +12,13 @@
 #define SYS_USE_MOD_SERIAL
 #define SYS_USE_MOD_LCD1602
 #define SYS_USE_MOD_NVM
+#define SYS_USE_MOD_FILE_SYSTEM
 
-//#define UART0_RX_BUFF_SIZE
+//TODO: Unimplemented
+//User nneds to define a buffer size be using below constant, otherwise common buffer size will be used
 #define UART1_RX_BUFF_SIZE			100
-//#define UART2_RX_BUFF_SIZE
-//#define UART3_RX_BUFF_SIZE
-//#define UART4_RX_BUFF_SIZE
-//#define UART5_RX_BUFF_SIZE
-//#define UART6_RX_BUFF_SIZE
-//#define UART7_RX_BUFF_SIZE
-//
-//#define UART0_TX_BUFF_SIZE
-//#define UART1_TX_BUFF_SIZE
-//#define UART2_TX_BUFF_SIZE
-//#define UART3_TX_BUFF_SIZE
-//#define UART4_TX_BUFF_SIZE
-//#define UART5_TX_BUFF_SIZE
-//#define UART6_TX_BUFF_SIZE
-//#define UART7_TX_BUFF_SIZE
+//#define UART1_TX_BUFF_SIZE			100
+
 
 
 #include "sys_core.h"

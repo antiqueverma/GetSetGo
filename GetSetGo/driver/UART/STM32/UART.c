@@ -110,7 +110,7 @@ void UART_INIT(scomObject_t *objUART,
 	objUART->rxbyte = NULL;
 	objUART->txbyte = NULL;
 
-	#if(SYS_MCU_SERIES == MCU_SERIES_STM32)
+
 		int br_unident=1;
 		RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN ;//(1<<0);  // Enable the GPIOA clock
 		RCC->APB2ENR |= (RCC_APB2ENR_USART1EN);
@@ -163,9 +163,6 @@ void UART_INIT(scomObject_t *objUART,
 			}
 		}
 		__enable_irq();
-
-	#endif
-	
 }
 
 /*****************************************************************
@@ -317,6 +314,14 @@ bool UART_RxBYTE(uint8_t instance, uint8_t *rx_data)
 	return 0;	//No message received
 }*/
 
+uint8_t UART_Handler(void)
+{
+	uint8_t module=0;
+
+#ifdef UART1_TX_BUFF_SIZE
+		UART_TxBUFFER(1, "Hello", 5);
+#endif
+}
 
 
 

@@ -25,8 +25,12 @@
 
 typedef struct{
 	uint32_t	speed;
-	uint8_t 	config;
+	uint32_t 	config;
 	uint8_t 	cbInstance;
+
+	uint8_t		txBusy:4;
+	uint8_t		rxBusy:4;
+
 	bool		(*txbyte)(uint8_t,uint8_t);
 	bool		(*rxbyte)(uint8_t,uint8_t*);
 

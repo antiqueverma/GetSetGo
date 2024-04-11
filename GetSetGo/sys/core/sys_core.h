@@ -6,7 +6,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include "string.h"
+
 #include "sys_config.h"
+
 
 /*Standard Constants*/
 	#define PASS 	1
@@ -40,20 +43,20 @@
 	#define 	MCU_SERIES_AVR_8_BIT 	1
 	#define 	MCU_SERIES_STM32		2
 
-#include "sys_config.h"
-#include "string.h"
 
 #if(SYS_MCU_SERIES == MCU_SERIES_AVR_8_BIT)//AVR 8Bit
 	#define MsDelay	_ms_delay
 	#define UsDelay	_us_delay
+	#define SYS_BUS_WIDTH	8
 #elif(SYS_MCU_SERIES == MCU_SERIES_STM32)
 	#define MsDelay	msDelay
 	#define UsDelay	usDelay
+	#define SYS_BUS_WIDTH	32
+#elif(SYS_MCU_SERIES == MCU_SERIES_MSP430)
+	#define MsDelay
+	#define UsDelay
+	#define SYS_BUS_WIDTH 16
 #endif
-
-
-
-
 
 
 /********************* Module Inclusions *********************/
@@ -88,20 +91,109 @@
 #endif
 /*************************************************************/
 
+typedef enum{
+	MOD_GPIOA,
+	MOD_GPIOB,
+	MOD_GPIOC,
+	MOD_GPIOD,
+	MOD_GPIOE,
+	MOD_GPIOF,
+	MOD_GPI0G,
+	MOD_GPIOH,
+	MOD_GPIOI,
+	MOD_GPIOJ,
+	MOD_GPIOK,
+	MOD_GPIOL,
+
+	MOD_TIMER0,
+	MOD_TIMER1,
+	MOD_TIMER2,
+	MOD_TIMER3,
+	MOD_TIMER4,
+	MOD_TIMER5,
+
+	MOD_UART0,
+	MOD_UART1,
+	MOD_UART2,
+	MOD_UART3,
+	MOD_UART4,
+	MOD_UART5,
+
+	MOD_SPI0,
+	MOD_SPI1,
+	MOD_SPI2,
+	MOD_SPI3,
+	MOD_SPI4,
+	MOD_SPI5,
+
+	MOD_I2C0,
+	MOD_I2C1,
+	MOD_I2C2,
+	MOD_I2C3,
+	MOD_I2C4,
+	MOD_I2C5,
+
+	MOD_CAN0,
+	MOD_CAN1,
+	MOD_CAN2,
+	MOD_CAN3,
+	MOD_CAN4,
+	MOD_CAN5,
+
+	MOD_ADC0,
+	MOD_ADC1,
+	MOD_ADC2,
+	MOD_ADC3,
+	MOD_ADC4,
+	MOD_ADC5,
+
+	MOD_DAC0,
+	MOD_DAC1,
+	MOD_DAC2,
+	MOD_DAC3,
+	MOD_DAC4,
+	MOD_DAC5,
+
+	MOD_COMP0,
+	MOD_COMP1,
+	MOD_COMP2,
+	MOD_COMP3,
+	MOD_COMP4,
+	MOD_COMP5,
+
+	MOD_DMA0,
+	MOD_DMA1,
+	MOD_DMA2,
+	MOD_DMA3,
+	MOD_DMA4,
+	MOD_DMA5,
+
+	MOD_EXT_INT,
+	MOD_EXT_INTn = MOD_EXT_INT+100,
+
+	MOD_RTC,
+	MOD_WDT,
+
+	MOD_RANDOM,
+	MOD_CRYPTO,
+	MOD_CRC,
+	MOD_HASH,
+
+	MOD_USB,
+	MOD_WIFI,
+	MOD_BLUETOOTH,
+	MOD_BLUETOOTH_LE,
+	MOD_ETHERNET,
+
+	MOD_RGB24B,
+
+	MOD_FLASH,
+	MOD_SRAM,
+	MOD_EEPROM,
+
+	MOD_CAPTOUCH
+
+} sys_module;
+
 #endif
 
-/*
-
-#ifndef GSG_XYZ_H_
-#define GSG_XYZ_H_
-
-
-#include <core.h>
-
-
-
-
-#endif
-
-
- * */
