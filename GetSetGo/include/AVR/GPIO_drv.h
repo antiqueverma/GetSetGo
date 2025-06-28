@@ -1,10 +1,3 @@
-/*
- * GPIO.h
- *
- * Created: 14-Mar-24 2:44:47 PM
- *  Author: qumxv8
- */ 
-
 
 #ifndef GSG_GPIO_H_
 #define GSG_GPIO_H_
