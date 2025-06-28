@@ -1,0 +1,5 @@
+{
+    "files.associations": {
+        "gpio_pin_defs.h": "c"
+    }
+}

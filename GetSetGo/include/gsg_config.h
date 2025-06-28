@@ -3,11 +3,11 @@
 
 #include "gsg_defs.h"  // always include master defines
 
-// Select MCU (affects headers used)
+// Set you project's setting:
 #define GSG_MCU_FAMILY		GSG_MCU_AVR
-// #define MCU_STM32
+#define GSG_OS_USED         GSG_OS_BARE_METAL   
 
-// Enable/disable modules
+/* Enable/disable modules */ 
 // Drivers
 #define GSG_USE_GPIO		GSG_ENABLE
 
@@ -18,7 +18,7 @@
 #define GSG_USE_DEBUG		GSG_DISABLE
 #define GSG_USE_STREAM		GSG_DISABLE
 
-
+// Utilities 
 #define GSG_USE_QUEUE		GSG_DISABLE
 
 

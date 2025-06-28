@@ -13,6 +13,10 @@
 #define GSG_MCU_PIC32		6
 #define GSG_MCU_PICESP32	7
 
+#define GSG_OS_BARE_METAL   0
+#define GSG_OS_FREERTOS     1
+#define GSG_OS_ZEPHYR       2
+
 
 // Module ID macros (optional use)
 #define GSG_MODULE_DEBUG     1

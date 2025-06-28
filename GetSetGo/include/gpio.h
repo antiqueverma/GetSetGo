@@ -10,4 +10,6 @@
 
 #endif
 
+#include "gpio_pin_defs.h"
+
 #endif  // GPIO_H_
