@@ -1,6 +1,8 @@
 #ifndef GSG_DEFS_H
 #define GSG_DEFS_H
 
+
+
 // Module toggle macros
 #define GSG_ENABLE     1
 #define GSG_DISABLE    0
@@ -25,5 +27,14 @@
 
 // Other framework-wide constants
 #define GSG_DEFAULT_LOG_LEVEL 2
+
+typedef enum {
+    GSG_OK = 0,
+    GSG_ERROR,
+    GSG_INVALID_ARG,
+    GSG_TIMEOUT,
+    GSG_BUSY,
+    GSG_NOT_FOUND
+} gsg_result_t;
 
 #endif // GSG_DEFS_H

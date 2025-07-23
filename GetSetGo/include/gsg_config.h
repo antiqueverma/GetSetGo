@@ -8,18 +8,43 @@
 #define GSG_OS_USED         GSG_OS_BARE_METAL   
 
 /* Enable/disable modules */ 
+#define GSG_USE_MEMALLOC    GSG_DISABLE
+
 // Drivers
 #define GSG_USE_GPIO		GSG_ENABLE
 
-// Protocols
+// Connectivity
+#define GSG_USE_BLUETOOTH   GSG_DISABLE
+#define GSG_USE_ETHERNET    GSG_DISABLE
+#define GSG_USE_RF433       GSG_DISABLE
+#define GSG_USE_RS232       GSG_DISABLE
+#define GSG_USE_RS485       GSG_DISABLE
 #define GSG_USE_MODBUS		GSG_DISABLE
+#define GSG_USE_WIFI        GSG_DISABLE
 
-// Middleware
+// Devices
+#define GSG_USE_LCD1602     GSG_DISABLE
+#define GSG_USE_LCD12864    GSG_DISABLE
+#define GSG_USE_RTC         GSG_DISABLE
+
+// Services
 #define GSG_USE_DEBUG		GSG_DISABLE
+#define GSG_USE_EVENT       GSG_DISABLE
+#define GSG_USE_FSLITE      GSG_DISABLE
 #define GSG_USE_STREAM		GSG_DISABLE
+#define GSG_USE_IO          GSG_DISABLE
+#define GSG_USE_NVM         GSG_DISABLE
+#define GSG_USE_SERIAL      GSG_DISABLE
+#define GSG_USE_STREAM      GSG_DISABLE
+#define GSG_USE_WDT         GSG_DISABLE
 
 // Utilities 
 #define GSG_USE_QUEUE		GSG_DISABLE
+#define GSG_USE_CSV         GSG_DISABLE
+#define GSG_USE_DSP         GSG_DISABLE
+#define GSG_USE_SVAR        GSG_DISABLE
+#define GSG_USE_TIME        GSG_DISABLE
+#define GSG_USE_WAVEGEN     GSG_DISABLE  
 
 
 

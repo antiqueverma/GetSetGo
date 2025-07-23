@@ -17,12 +17,14 @@ typedef enum{
 	FILE_TYPE_LIST,			//structures
 	FILE_TYPE_TABLE,		//2D arrays or 2x2-Lists
 	//Text based files
-	FILE_TYPE_TXT,
+	FILE_TYPE_TXT, 
 	FILE_TYPE_XML,
 	FILE_TYPE_HTML,
 	FILE_TYPE_CSS,
 	FILE_TYPE_JSON,
 	FILE_TYPE_TOML,
+	FILE_TYPE_YAML,
+	FILE_TYPE_CSV,
 	//Configuration files, maybe another version of text files
 	FILE_TYPE_CONFIG,	//Idk, maybe I just made this up?
 	FILE_TYPE_INI,
