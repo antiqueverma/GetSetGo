@@ -1,5 +1,5 @@
-#ifndef GSG_BASE_H
-#define GSG_BASE_H
+#ifndef GSG_BASE_H_
+#define GSG_BASE_H_
 
 // 🔧 User Configuration Settings
 #include "gsg_config.h"

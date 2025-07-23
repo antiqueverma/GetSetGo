@@ -4,6 +4,7 @@
         "event.h": "c",
         "gsg_base.h": "c",
         "gsg_defs.h": "c",
-        "gsg_config.h": "c"
+        "gsg_config.h": "c",
+        "memalloc.h": "c"
     }
 }
