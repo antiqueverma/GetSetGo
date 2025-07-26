@@ -1,0 +1,42 @@
+<SECTION>,SEGMENT,,,,,,,,,
+Segment,CONFIGURATION,,,,,,,,,
+Flavor,SHADOWED_EEPROM,,,,,,,,,
+Offset Address,0,Applicable for EEPROM only,,,,,,,,
+SegmentPrefix,CONF,,,,,,,,,
+RefreshTime (sec),0,"Applicable for EEPROM only, 0-On Demand, other value - sec",,,,Results,,,,
+varType,varName,varDepth,varDesc,,,FinalName,TypeSize,TotalSize,Depth,Comment
+uint8_t,Module_Settings_1,10,Module_Settings_1  variable,,,SVAR_CONF_Module_Settings_1_u8,1,10,10,Module_Settings_1  variable
+uint8_t,Module_Settings_2,1,Module_Settings_2  variable,,,SVAR_CONF_Module_Settings_2_u8,1,1,1,Module_Settings_2  variable
+uint8_t,Module_Settings_3,1,Module_Settings_3  variable,,,SVAR_CONF_Module_Settings_3_u8,1,1,1,Module_Settings_3  variable
+int16_t,Module_Settings_4,1,Module_Settings_4  variable,,,SVAR_CONF_Module_Settings_4_s16,2,2,1,Module_Settings_4  variable
+uint8_t,Module_Settings_5,1,Module_Settings_5  variable,,,SVAR_CONF_Module_Settings_5_u8,1,1,1,Module_Settings_5  variable
+uint8_t,Module_Settings_6,1,Module_Settings_6  variable,,,SVAR_CONF_Module_Settings_6_u8,1,1,1,Module_Settings_6  variable
+uint8_t,Module_Settings_7,1,Module_Settings_7  variable,,,SVAR_CONF_Module_Settings_7_u8,1,1,1,Module_Settings_7  variable
+uint8_t,Module_Settings_8,1,Module_Settings_8  variable,,,SVAR_CONF_Module_Settings_8_u8,1,1,1,Module_Settings_8  variable
+uint32_t,Module_Settings_9,1,Module_Settings_9  variable,,,SVAR_CONF_Module_Settings_9_u32,4,4,1,Module_Settings_9  variable
+uint8_t,Module_Settings_10,1,Module_Settings_10  variable,,,SVAR_CONF_Module_Settings_10_u8,1,1,1,Module_Settings_10  variable
+uint8_t,Module_Settings_11,1,Module_Settings_11  variable,,,SVAR_CONF_Module_Settings_11_u8,1,1,1,Module_Settings_11  variable
+uint32_t,Module_Settings_12,1,Module_Settings_12  variable,,,SVAR_CONF_Module_Settings_12_u32,4,4,1,Module_Settings_12  variable
+uint8_t,Module_Settings_13,2,Module_Settings_13  variable,,,SVAR_CONF_Module_Settings_13_u8,1,2,2,Module_Settings_13  variable
+uint64_t,Module_Settings_14,1,Module_Settings_14  variable,,,SVAR_CONF_Module_Settings_14_u64,8,8,1,Module_Settings_14  variable
+uint8_t,Module_Settings_15,1,Module_Settings_15  variable,,,SVAR_CONF_Module_Settings_15_u8,1,1,1,Module_Settings_15  variable
+uint8_t,Module_Settings_16,1,Module_Settings_16  variable,,,SVAR_CONF_Module_Settings_16_u8,1,1,1,Module_Settings_16  variable
+bool,Module_Settings_17,1,Module_Settings_17  variable,,,SVAR_CONF_Module_Settings_17_b,1,1,1,Module_Settings_17  variable
+bool,Module_Settings_18,1,Module_Settings_18  variable,,,SVAR_CONF_Module_Settings_18_b,1,1,1,Module_Settings_18  variable
+uint8_t,Module_Settings_19,1,Module_Settings_19  variable,,,SVAR_CONF_Module_Settings_19_u8,1,1,1,Module_Settings_19  variable
+uint8_t,Module_Settings_20,1,Module_Settings_20  variable,,,SVAR_CONF_Module_Settings_20_u8,1,1,1,Module_Settings_20  variable
+uint8_t,Module_Settings_21,1,Module_Settings_21  variable,,,SVAR_CONF_Module_Settings_21_u8,1,1,1,Module_Settings_21  variable
+uint8_t,Module_Settings_22,1,Module_Settings_22  variable,,,SVAR_CONF_Module_Settings_22_u8,1,1,1,Module_Settings_22  variable
+uint8_t,Module_Settings_23,1,Module_Settings_23  variable,,,SVAR_CONF_Module_Settings_23_u8,1,1,1,Module_Settings_23  variable
+svAdd,Module_Settings_24,1,Module_Settings_24  variable,,,SVAR_CONF_Module_Settings_24_add,4,4,1,Module_Settings_24  variable
+uint8_t,Module_Settings_25,1,Module_Settings_25  variable,,,SVAR_CONF_Module_Settings_25_u8,1,1,1,Module_Settings_25  variable
+uint8_t,Module_Settings_26,1,Module_Settings_26  variable,,,SVAR_CONF_Module_Settings_26_u8,1,1,1,Module_Settings_26  variable
+uint8_t,Module_Settings_27,1,Module_Settings_27  variable,,,SVAR_CONF_Module_Settings_27_u8,1,1,1,Module_Settings_27  variable
+uint8_t,Module_Settings_28,1,Module_Settings_28  variable,,,SVAR_CONF_Module_Settings_28_u8,1,1,1,Module_Settings_28  variable
+float,Module_Settings_29,1,Module_Settings_29  variable,,,SVAR_CONF_Module_Settings_29_f,4,4,1,Module_Settings_29  variable
+uint8_t,Module_Settings_30,1,Module_Settings_30  variable,,,SVAR_CONF_Module_Settings_30_u8,1,1,1,Module_Settings_30  variable
+uint8_t,Module_Settings_31,1,Module_Settings_31  variable,,,SVAR_CONF_Module_Settings_31_u8,1,1,1,Module_Settings_31  variable
+uint8_t,Module_Settings_32,1,Module_Settings_32  variable,,,SVAR_CONF_Module_Settings_32_u8,1,1,1,Module_Settings_32  variable
+int8_t,Module_Settings_33,1,Module_Settings_33  variable,,,SVAR_CONF_Module_Settings_33_s8,1,1,1,Module_Settings_33  variable
+bool,Module_Settings_34,1,Module_Settings_34  variable,,,SVAR_CONF_Module_Settings_34_b,1,1,1,Module_Settings_34  variable
+int32_t,Module_Settings_35,1,Module_Settings_35  variable,,,SVAR_CONF_Module_Settings_35_s32,4,4,1,Module_Settings_35  variable

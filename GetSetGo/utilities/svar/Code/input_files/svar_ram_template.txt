@@ -1,0 +1,17 @@
+#include "sv_internal.h"
+
+// SVAR Setup data
+setupData_t svarSetup = {
+    .segCount           = $,
+    .packedStorage_en   = $,
+    .pageSize           = $,
+    .factoryBytes       = 0xABCD,
+};
+
+// SVAR RAM storages
+$
+// SVAR Segments Data
+segmentData_t segment[$] = {
+$
+};
+

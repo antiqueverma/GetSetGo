@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "type_traits": "c",
+        "svar_internal.h": "c",
+        "svar_add.h": "c"
+    }
+}

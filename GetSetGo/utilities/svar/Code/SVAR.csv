@@ -1,0 +1,83 @@
+<SECTION>	SETUP_INFO	
+Product Name	WCBMS	
+EEPROM	24C16	
+<SECTION>	SETUP_CONFIG	
+SVAR_SEGMENT_COUNT	6	
+SVAR_NVM_PAGE_SIZE	128	
+SVAR_PACKED_STORAGE_EN	0	
+SVAR_SEG_TYPE_PREFIX_EN	0	
+SVAR_SEG_NAME_PREFIX_EN	1	
+SVAR_ADD_BASE_HEX	1	
+<SECTION>	CONFIGURATION	varSheet1
+SVAR_BMS_Battery_Count_u8	10	Battery_Count  variable
+SVAR_BMS_UnderVolt_Threshold_u8	1	UnderVolt_Threshold  variable
+SVAR_BMS_OverVolt_Threshold_u8	1	OverVolt_Threshold  variable
+SVAR_BMS_Module_Count_1_s16	2	Module_Count_1  variable
+SVAR_BMS_Module_Count_2_u8	1	Module_Count_2  variable
+SVAR_BMS_Module_Count_3_u8	1	Module_Count_3  variable
+SVAR_BMS_Module_Count_4_u8	1	Module_Count_4  variable
+SVAR_BMS_Module_Count_5_u8	1	Module_Count_5  variable
+SVAR_BMS_Module_Count_6_u32	4	Module_Count_6  variable
+SVAR_BMS_Module_Count_7_u8	1	Module_Count_7  variable
+SVAR_BMS_Module_Count_8_u8	1	Module_Count_8  variable
+SVAR_BMS_Module_Count_9_ld	16	Module_Count_9  variable
+SVAR_BMS_Module_Count_10_u8	20	Module_Count_10  variable
+SVAR_BMS_Module_Count_11_u64	8	Module_Count_11  variable
+SVAR_BMS_Module_Count_12_u8	1	Module_Count_12  variable
+SVAR_BMS_Module_Count_13_u8	1	Module_Count_13  variable
+SVAR_BMS_Module_Count_14_b	1	Module_Count_14  variable
+SVAR_BMS_Module_Count_15_b	1	Module_Count_15  variable
+SVAR_BMS_Module_Count_16_u8	1	Module_Count_16  variable
+SVAR_BMS_Module_Count_17_u8	1	Module_Count_17  variable
+SVAR_BMS_Module_Count_18_u8	1	Module_Count_18  variable
+SVAR_BMS_Module_Count_19_u8	1	Module_Count_19  variable
+SVAR_BMS_Module_Count_20_u8	1	Module_Count_20  variable
+SVAR_BMS_Module_Count_21_add	4	Module_Count_21  variable
+SVAR_BMS_Module_Count_22_u8	1	Module_Count_22  variable
+SVAR_BMS_Module_Count_23_u8	1	Module_Count_23  variable
+SVAR_BMS_Module_Count_24_u8	1	Module_Count_24  variable
+SVAR_BMS_Module_Count_25_u8	1	Module_Count_25  variable
+SVAR_BMS_Module_Count_26_f	4	Module_Count_26  variable
+SVAR_BMS_Module_Count_27_u8	1	Module_Count_27  variable
+SVAR_BMS_Module_Count_28_u8	1	Module_Count_28  variable
+SVAR_BMS_Module_Count_29_u8	1	Module_Count_29  variable
+SVAR_BMS_Module_Count_30_s8	1	Module_Count_30  variable
+SVAR_BMS_Module_Count_31_b	1	Module_Count_31  variable
+SVAR_BMS_Module_Count_32_s32	4	Module_Count_32  variable
+<SECTION>	PERFORMANCE	varSheet2
+SVAR_OTA_Battery_Count_u8	10	Battery_Count  variable
+SVAR_OTA_UnderVolt_Threshold_u8	1	UnderVolt_Threshold  variable
+SVAR_OTA_OverVolt_Threshold_u8	1	OverVolt_Threshold  variable
+SVAR_OTA_Module_Count_1_s16	2	Module_Count_1  variable
+SVAR_OTA_Module_Count_2_u8	1	Module_Count_2  variable
+SVAR_OTA_Module_Count_3_u8	1	Module_Count_3  variable
+SVAR_OTA_Module_Count_4_u8	1	Module_Count_4  variable
+SVAR_OTA_Module_Count_5_u8	1	Module_Count_5  variable
+SVAR_OTA_Module_Count_6_u32	4	Module_Count_6  variable
+SVAR_OTA_Module_Count_7_u8	1	Module_Count_7  variable
+SVAR_OTA_Module_Count_8_u8	1	Module_Count_8  variable
+SVAR_OTA_Module_Count_9_ld	16	Module_Count_9  variable
+SVAR_OTA_Module_Count_10_u8	20	Module_Count_10  variable
+SVAR_OTA_Module_Count_11_u64	8	Module_Count_11  variable
+SVAR_OTA_Module_Count_12_u8	1	Module_Count_12  variable
+SVAR_OTA_Module_Count_13_u8	1	Module_Count_13  variable
+SVAR_OTA_Module_Count_14_b	1	Module_Count_14  variable
+SVAR_OTA_Module_Count_15_b	1	Module_Count_15  variable
+SVAR_OTA_Module_Count_16_u8	1	Module_Count_16  variable
+SVAR_OTA_Module_Count_17_u8	1	Module_Count_17  variable
+SVAR_OTA_Module_Count_18_u8	1	Module_Count_18  variable
+SVAR_OTA_Module_Count_19_u8	1	Module_Count_19  variable
+SVAR_OTA_Module_Count_20_u8	1	Module_Count_20  variable
+SVAR_OTA_Module_Count_21_add	4	Module_Count_21  variable
+SVAR_OTA_Module_Count_22_u8	1	Module_Count_22  variable
+SVAR_OTA_Module_Count_23_u8	1	Module_Count_23  variable
+SVAR_OTA_Module_Count_24_u8	1	Module_Count_24  variable
+SVAR_OTA_Module_Count_25_u8	1	Module_Count_25  variable
+SVAR_OTA_Module_Count_26_f	4	Module_Count_26  variable
+SVAR_OTA_Module_Count_27_u8	1	Module_Count_27  variable
+SVAR_OTA_Module_Count_28_u8	1	Module_Count_28  variable
+SVAR_OTA_Module_Count_29_u8	1	Module_Count_29  variable
+SVAR_OTA_Module_Count_30_s8	1	Module_Count_30  variable
+SVAR_OTA_Module_Count_31_b	1	Module_Count_31  variable
+SVAR_OTA_Module_Count_32_s32	4	Module_Count_32  variable
+<SECTION>	END	

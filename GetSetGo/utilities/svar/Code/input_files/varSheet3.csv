@@ -1,0 +1,42 @@
+<SECTION>,SEGMENT,,,,,,,,,
+Segment,CALIBRATION,,,,,,,,,
+Flavor,SHADOWED_EEPROM,,,,,,,,,
+Offset Address,0,Applicable for EEPROM only,,,,,,,,
+SegmentPrefix,CAL,,,,,,,,,
+RefreshTime (sec),0,"Applicable for EEPROM only, 0-On Demand, other value - sec",,,,Results,,,,
+varType,varName,varDepth,varDesc,,,FinalName,TypeSize,TotalSize,Depth,Comment
+uint8_t,Module_ADC_1,10,Module_ADC_1  variable,,,SVAR_CAL_Module_ADC_1_u8,1,10,10,Module_ADC_1  variable
+uint8_t,Module_ADC_2,1,Module_ADC_2  variable,,,SVAR_CAL_Module_ADC_2_u8,1,1,1,Module_ADC_2  variable
+uint8_t,Module_ADC_3,1,Module_ADC_3  variable,,,SVAR_CAL_Module_ADC_3_u8,1,1,1,Module_ADC_3  variable
+int16_t,Module_ADC_4,1,Module_ADC_4  variable,,,SVAR_CAL_Module_ADC_4_s16,2,2,1,Module_ADC_4  variable
+uint8_t,Module_ADC_5,1,Module_ADC_5  variable,,,SVAR_CAL_Module_ADC_5_u8,1,1,1,Module_ADC_5  variable
+uint8_t,Module_ADC_6,1,Module_ADC_6  variable,,,SVAR_CAL_Module_ADC_6_u8,1,1,1,Module_ADC_6  variable
+uint8_t,Module_ADC_7,1,Module_ADC_7  variable,,,SVAR_CAL_Module_ADC_7_u8,1,1,1,Module_ADC_7  variable
+uint8_t,Module_ADC_8,1,Module_ADC_8  variable,,,SVAR_CAL_Module_ADC_8_u8,1,1,1,Module_ADC_8  variable
+uint32_t,Module_ADC_9,1,Module_ADC_9  variable,,,SVAR_CAL_Module_ADC_9_u32,4,4,1,Module_ADC_9  variable
+uint8_t,Module_ADC_10,1,Module_ADC_10  variable,,,SVAR_CAL_Module_ADC_10_u8,1,1,1,Module_ADC_10  variable
+uint8_t,Module_ADC_11,1,Module_ADC_11  variable,,,SVAR_CAL_Module_ADC_11_u8,1,1,1,Module_ADC_11  variable
+uint32_t,Module_ADC_12,1,Module_ADC_12  variable,,,SVAR_CAL_Module_ADC_12_u32,4,4,1,Module_ADC_12  variable
+uint8_t,Module_ADC_13,2,Module_ADC_13  variable,,,SVAR_CAL_Module_ADC_13_u8,1,2,2,Module_ADC_13  variable
+uint64_t,Module_ADC_14,1,Module_ADC_14  variable,,,SVAR_CAL_Module_ADC_14_u64,8,8,1,Module_ADC_14  variable
+uint8_t,Module_ADC_15,1,Module_ADC_15  variable,,,SVAR_CAL_Module_ADC_15_u8,1,1,1,Module_ADC_15  variable
+uint8_t,Module_ADC_16,1,Module_ADC_16  variable,,,SVAR_CAL_Module_ADC_16_u8,1,1,1,Module_ADC_16  variable
+bool,Module_ADC_17,1,Module_ADC_17  variable,,,SVAR_CAL_Module_ADC_17_b,1,1,1,Module_ADC_17  variable
+bool,Module_ADC_18,1,Module_ADC_18  variable,,,SVAR_CAL_Module_ADC_18_b,1,1,1,Module_ADC_18  variable
+uint8_t,Module_ADC_19,1,Module_ADC_19  variable,,,SVAR_CAL_Module_ADC_19_u8,1,1,1,Module_ADC_19  variable
+uint8_t,Module_ADC_20,1,Module_ADC_20  variable,,,SVAR_CAL_Module_ADC_20_u8,1,1,1,Module_ADC_20  variable
+uint8_t,Module_ADC_21,1,Module_ADC_21  variable,,,SVAR_CAL_Module_ADC_21_u8,1,1,1,Module_ADC_21  variable
+uint8_t,Module_ADC_22,1,Module_ADC_22  variable,,,SVAR_CAL_Module_ADC_22_u8,1,1,1,Module_ADC_22  variable
+uint8_t,Module_ADC_23,1,Module_ADC_23  variable,,,SVAR_CAL_Module_ADC_23_u8,1,1,1,Module_ADC_23  variable
+svAdd,Module_ADC_24,1,Module_ADC_24  variable,,,SVAR_CAL_Module_ADC_24_add,4,4,1,Module_ADC_24  variable
+uint8_t,Module_ADC_25,1,Module_ADC_25  variable,,,SVAR_CAL_Module_ADC_25_u8,1,1,1,Module_ADC_25  variable
+uint8_t,Module_ADC_26,1,Module_ADC_26  variable,,,SVAR_CAL_Module_ADC_26_u8,1,1,1,Module_ADC_26  variable
+uint8_t,Module_ADC_27,1,Module_ADC_27  variable,,,SVAR_CAL_Module_ADC_27_u8,1,1,1,Module_ADC_27  variable
+uint8_t,Module_ADC_28,1,Module_ADC_28  variable,,,SVAR_CAL_Module_ADC_28_u8,1,1,1,Module_ADC_28  variable
+float,Module_ADC_29,1,Module_ADC_29  variable,,,SVAR_CAL_Module_ADC_29_f,4,4,1,Module_ADC_29  variable
+uint8_t,Module_ADC_30,1,Module_ADC_30  variable,,,SVAR_CAL_Module_ADC_30_u8,1,1,1,Module_ADC_30  variable
+uint8_t,Module_ADC_31,1,Module_ADC_31  variable,,,SVAR_CAL_Module_ADC_31_u8,1,1,1,Module_ADC_31  variable
+uint8_t,Module_ADC_32,1,Module_ADC_32  variable,,,SVAR_CAL_Module_ADC_32_u8,1,1,1,Module_ADC_32  variable
+int8_t,Module_ADC_33,1,Module_ADC_33  variable,,,SVAR_CAL_Module_ADC_33_s8,1,1,1,Module_ADC_33  variable
+bool,Module_ADC_34,1,Module_ADC_34  variable,,,SVAR_CAL_Module_ADC_34_b,1,1,1,Module_ADC_34  variable
+int32_t,Module_ADC_35,1,Module_ADC_35  variable,,,SVAR_CAL_Module_ADC_35_s32,4,4,1,Module_ADC_35  variable
