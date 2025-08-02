@@ -1,17 +1,17 @@
-#ifndef GSG_CONFIG_H
-#define GSG_CONFIG_H
+#ifndef GSG_CONFIG_H_
+#define GSG_CONFIG_H_
 
 #include "gsg_defs.h"  // always include master defines
 
 // Set you project's setting:
-#define GSG_MCU_FAMILY		GSG_MCU_AVR
-#define GSG_OS_USED         GSG_OS_BARE_METAL   
+#define GSG_MCU_FAMILY		GSG_MCU_STM32
+#define GSG_OS_USED         GSG_OS_CMSIS_V2 
 
 /* Enable/disable modules */ 
 #define GSG_USE_MEMALLOC    GSG_DISABLE
 
 // Drivers
-#define GSG_USE_GPIO		GSG_ENABLE
+#define GSG_USE_GPIO		GSG_DISABLE
 
 // Connectivity
 #define GSG_USE_BLUETOOTH   GSG_DISABLE
@@ -19,7 +19,7 @@
 #define GSG_USE_RF433       GSG_DISABLE
 #define GSG_USE_RS232       GSG_DISABLE
 #define GSG_USE_RS485       GSG_DISABLE
-#define GSG_USE_MODBUS		GSG_DISABLE
+#define GSG_USE_MODBUS		GSG_ENABLE
 #define GSG_USE_WIFI        GSG_DISABLE
 
 // Devices
@@ -28,7 +28,7 @@
 #define GSG_USE_RTC         GSG_DISABLE
 
 // Services
-#define GSG_USE_DEBUG		GSG_DISABLE
+#define GSG_USE_DEBUG		GSG_ENABLE
 #define GSG_USE_EVENT       GSG_DISABLE
 #define GSG_USE_FSLITE      GSG_DISABLE
 #define GSG_USE_STREAM		GSG_DISABLE
@@ -51,7 +51,4 @@
 // Optional: Other configurable values
 #define GSG_LOG_LEVEL     GSG_DEFAULT_LOG_LEVEL
 
-
-#include "gsg_base.h"
-
-#endif // GSG_CONFIG_H
+#endif // GSG_CONFIG_H_

@@ -1,6 +1,8 @@
 
 #include "modbus.h"
 
+extern debugTagId_t 	debugTagId;
+extern char 			debugTag[];
 
 static uint8_t mb_reg_table_write(modbus_register_t *reg, void *value)
 {

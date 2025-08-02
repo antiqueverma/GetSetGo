@@ -1,11 +1,36 @@
 #ifndef GSG_BASE_H_
 #define GSG_BASE_H_
 
-// 🔧 User Configuration Settings
-#include "gsg_config.h"
+// standard includes
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 // 📏 GSG-Wide Constants and Macros
 #include "gsg_defs.h"
+
+// 🔧 User Configuration Settings
+#include "gsg_config.h"
+
+//#ifndef GSG_OS_USED
+//  #define GSG_OS_USED GSG_OS_BARE_METAL
+//  #warning "GSG_OS_USED not defined, defaulting to GSG_OS_BARE_METAL"
+//#endif
+
+// freeRTOS kernel includes
+//#if (GSG_OS_USED == GSG_OS_FREERTOS)
+//  #include "freertos/FreeRTOS.h"
+//  #include "freertos/task.h"
+//  #include "freertos/semphr.h"
+//  #include "freertos/queue.h"
+//  #include "freertos/timers.h"
+//#elif (GSG_OS_USED == GSG_OS_CMSIS_V2)
+  #include "cmsis_os2.h"
+//#endif
+
 
 // 📦 Conditionally Include Enabled Modules
 #if GSG_USE_GPIO
@@ -13,15 +38,17 @@
 #endif
 
 #if GSG_USE_DEBUG == GSG_ENABLE
-  #include "debug.h"
+  #include "services/debug/debug.h"
 #endif
 
 #if GSG_USE_STREAM == GSG_ENABLE
-  #include "stream.h"
+  #include "services/stream/stream.h"
 #endif
 
 #if GSG_USE_MODBUS == GSG_ENABLE
-  #include "modbus.h"
+  #include "connectivity/modbus/modbus.h"
+  #include "connectivity/modbus/modbus_master.h"
+  #include "connectivity/modbus/modbus_register_interface.h"
 #endif
 
 #if GSG_USE_QUEUE == GSG_ENABLE
@@ -96,8 +123,6 @@
   #include "rs485.h"
 #endif
 
-#if GSG_USE_
-
 // Add more module includes as needed...
 
-#endif // GSG_BASE_H
+#endif // GSG_BASE_H_
