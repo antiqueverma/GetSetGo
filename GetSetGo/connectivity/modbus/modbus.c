@@ -15,6 +15,8 @@ static uint8_t portCount = 0; // Counter for the number of ports
 static void modbusTaskHandler(void *pvParameters);
 void mbMasterPushQueryTimerCallback(void *arg);
 void mbMasterQueryTimerHandler(void *arg);
+void mbTxGenFrame(modbus_port_t *port, mb_query_type_t queryType, uint8_t slaveId, uint16_t address, uint16_t regCount);
+gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size);
 
 
 static void modbusTaskHandler(void * argument)
@@ -22,7 +24,7 @@ static void modbusTaskHandler(void * argument)
     // typecast the port parameter to modbus_port_t pointer
     modbus_port_t *modbusPort = (modbus_port_t *)argument;
     char tempBuffer[64]; // Temporary buffer for debug messages
-    modbusPort->state = MB_PORT_STATE_IDLE; // Set initial state to disabled
+    modbusPort->state = MB_PORT_STATE_MASTER_IDLE; // Set initial state to disabled
 
     // Modbus task implementation
     while (1)
@@ -56,12 +58,15 @@ static void modbusTaskHandler(void * argument)
                                 modbusPort->currentQuery.slaveId, 
                                 modbusPort->currentQuery.address, 
                                 modbusPort->currentQuery.regCount);
-                // Clear the current query after processing
-                memset(&modbusPort->currentQuery, 0, sizeof(mb_master_query_t));
+                
+                modbusPort->state = MB_PORT_STATE_MASTER_TRANSMITTING;
                 break;
             }
             case MB_PORT_STATE_MASTER_TRANSMITTING:
             {
+                mbPhySendData(modbusPort, 
+                                modbusPort->tx_buffer, 
+                                modbusPort->tx_buffer_length);
                 modbusPort->state = MB_PORT_STATE_MASTER_RX_WAITING;
                 break;
             }
@@ -78,7 +83,9 @@ static void modbusTaskHandler(void * argument)
             case MB_PORT_STATE_MASTER_RESET:
             {
                 // Reset the Modbus port state
-                modbusPort->state = MB_PORT_STATE_IDLE; // Reset to idle state
+                // Clear the current query after processing
+                memset(&modbusPort->currentQuery, 0, sizeof(mb_master_query_t));
+                modbusPort->state = MB_PORT_STATE_MASTER_IDLE; // Reset to idle state
                 break;
             }
             case MB_PORT_STATE_DISABLED:
@@ -89,7 +96,7 @@ static void modbusTaskHandler(void * argument)
             default:
                 break;
         }
-        osDelay(10); 
+        osDelay(100);
     }
     osThreadExit(); // Exit the task when done
 }
@@ -112,8 +119,8 @@ gsg_result_t MB_createPortStatic(modbus_port_t * port)
     port->state = MB_PORT_STATE_DISABLED; // Set initial state to disabled
 
     // Reset memory for the port buffers
-    memset(port->rx_buffer, 0, MODBUS_PORT_RX_BUFFER_SIZE);
-    memset(port->tx_buffer, 0, MODBUS_PORT_TX_BUFFER_SIZE);
+//    memset(port->rx_buffer, 0, MODBUS_PORT_RX_BUFFER_SIZE);
+//    memset(port->tx_buffer, 0, MODBUS_PORT_TX_BUFFER_SIZE);
 
     #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == ENABLED)
         // Initialize registers, buffers, etc. as needed
@@ -139,21 +146,27 @@ gsg_result_t MB_startPort(modbus_port_t * port)
     // Validate the input struct
     if (port == NULL)
         return GSG_INVALID_ARG;
-
     if (port->state != MB_PORT_STATE_DISABLED)
         return GSG_ERROR; // Port is already started or in use
 
     // Start Modbus task
-    port->taskHandle = osThreadNew(modbusTaskHandler, port, &port->taskAttributes);
+    const osThreadAttr_t defaultTask_attributes = {
+      .name = "defaultTask",
+      .stack_size = 2048,
+      .priority = (osPriority_t) osPriorityNormal,
+    };
+
+    port->taskHandle = osThreadNew(modbusTaskHandler,
+    		port,
+			&defaultTask_attributes);
     if (port->taskHandle == NULL)
         return GSG_ERROR;
 
     // Start periodic query timer and save the handle
-    port->queryTimerHandle = osTimerNew(mbMasterQueryTimerHandler, osTimerPeriodic, port, NULL);
+//    port->queryTimerHandle = osTimerNew(mbMasterQueryTimerHandler, osTimerPeriodic, port, NULL);
     if (port->queryTimerHandle == NULL)
         return GSG_ERROR;
-
-    osTimerStart(port->queryTimerHandle, 100); // 100 ms periodic timer
+//    osTimerStart(port->queryTimerHandle, 100); // 100 ms periodic timer
     return GSG_SUCCESS;
 }
 

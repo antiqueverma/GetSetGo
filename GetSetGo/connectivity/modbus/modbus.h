@@ -7,7 +7,7 @@
 
 // Modbus Library Configuration
 #define MODBUS_TASK_PRIORITY                            osPriorityNormal
-#define MODBUS_TASK_STACK_SIZE                          KB_2_B(4)
+#define MODBUS_TASK_STACK_SIZE                          KB_2_B(6)
 #define MODBUS_PORT_MAX_COUNT                           5 // Maximum number of Modbus ports
 #define MODBUS_PORT_USE_HEAP                            DISABLED
 #define MODBUS_MASTER_MODE                              ENABLED
@@ -183,6 +183,8 @@ typedef struct{
     #else
         uint8_t  rx_buffer[MODBUS_PORT_RX_BUFFER_SIZE]; // Static receive buffer
         uint8_t  tx_buffer[MODBUS_PORT_TX_BUFFER_SIZE]; // Static transmit buffer
+        uint16_t rx_buffer_length; // Length of the receive buffer
+        uint16_t tx_buffer_length; // Length of the transmit buffer
     #endif
 
     osThreadId_t                taskHandle;

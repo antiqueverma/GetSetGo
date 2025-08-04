@@ -60,16 +60,12 @@ gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size)
 
     newSize = mbPhyPreTx(port, data, size);
 
-    // Set the port state to transmitting
-    port->state = MB_PORT_STATE_TRANSMITTING;
-
     // Call the registered callback for the physical layer
     if (modbusPhyTxCallbacks[port->phy] != NULL)
     {
         osMutexAcquire(modbusPhyTxMutex[port->phy], osWaitForever);
         modbusPhyTxCallbacks[port->phy](data, newSize);
         osMutexRelease(modbusPhyTxMutex[port->phy]);
-        port->state = MB_PORT_STATE_TX_COMPLETE;
         return GSG_SUCCESS;
     }
     else

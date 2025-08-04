@@ -84,7 +84,7 @@ void debugLog(debugTagId_t tagId, char level, char * tag, char * msg)
 {
    if(DEBUG_LOG_IS_ENABLED(tagId) == 0)
        return;
-   if (osMutexAcquire(debugLogMutex, osWaitForever) == osOK)
+//   if (osMutexAcquire(debugLogMutex, 10) == osOK)
    {
        char msgBuff[DEBUG_MSG_MAX_LEN];
        memset(msgBuff, 0x00, sizeof(msgBuff));
@@ -116,7 +116,7 @@ void debugLog(debugTagId_t tagId, char level, char * tag, char * msg)
                break;
            }
        }
-       osMutexRelease(debugLogMutex);
+//       osMutexRelease(debugLogMutex);
    }
 }
 void debugLogRaw(char * msg)
