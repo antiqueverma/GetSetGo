@@ -6,8 +6,16 @@ char 			debugTag[] = "MB";
 
 static uint8_t portCount = 0; // Counter for the number of ports
 
+#if (MODBUS_MASTER_MODE == ENABLED)
+    static modbus_slave_info_t slaveInfo[MODBUS_MASTER_MAX_SLAVES]; // Array to hold slave information
+    static uint8_t slaveCount = 0; // Counter for the number of slaves
+#endif
+
 // Private function prototypes
 static void modbusTaskHandler(void *pvParameters);
+void mbMasterPushQueryTimerCallback(void *arg);
+void mbMasterQueryTimerHandler(void *arg);
+
 
 static void modbusTaskHandler(void * argument)
 {
@@ -30,45 +38,44 @@ static void modbusTaskHandler(void * argument)
         // Modbus port state machine
         switch (modbusPort->state)
         {
-            case MB_PORT_STATE_IDLE:
+            // Master Mode States
+
+            case MB_PORT_STATE_MASTER_IDLE:
             {
-                if(modbusPort->mode == MODBUS_MODE_MASTER)
+                // Check if there is a query registered for master mode
+                if (modbusPort->currentQuery.slaveId)
                 {
-                    modbusPort->state = MB_PORT_STATE_TX_WAITING; // Set to waiting state
-                }
-                else if ((modbusPort->mode == MODBUS_MODE_SLAVE) || (modbusPort->mode == MODBUS_MODE_MULTI_SLAVE))
-                {
-                    modbusPort->state = MB_PORT_STATE_RX_WAITING; // Set to waiting state
+                    modbusPort->state = MB_PORT_STATE_MASTER_TX_PROCESSING; // Set to processing state
                 }
                 break;
             }
-            case MB_PORT_STATE_TX_WAITING:
+            case MB_PORT_STATE_MASTER_TX_PROCESSING:
             {
-                modbusPort->state = MB_PORT_STATE_TX_PROCESSING;
-                // Wait for incoming Modbus requests
+                mbTxGenFrame(modbusPort, 
+                                modbusPort->currentQuery.type, 
+                                modbusPort->currentQuery.slaveId, 
+                                modbusPort->currentQuery.address, 
+                                modbusPort->currentQuery.regCount);
+                // Clear the current query after processing
+                memset(&modbusPort->currentQuery, 0, sizeof(mb_master_query_t));
                 break;
             }
-            case MB_PORT_STATE_TX_PROCESSING:
+            case MB_PORT_STATE_MASTER_TRANSMITTING:
             {
-                modbusPort->state = MB_PORT_STATE_TRANSMITTING;
+                modbusPort->state = MB_PORT_STATE_MASTER_RX_WAITING;
                 break;
             }
-            case MB_PORT_STATE_TRANSMITTING:
+            case MB_PORT_STATE_MASTER_RX_WAITING:
             {
-                modbusPort->state = MB_PORT_STATE_RESET;
+                modbusPort->state = MB_PORT_STATE_MASTER_RX_PROCESSING; // Set to processing state
                 break;
             }
-            case MB_PORT_STATE_RX_WAITING:
+            case MB_PORT_STATE_MASTER_RX_PROCESSING:
             {
-                modbusPort->state = MB_PORT_STATE_RX_PROCESSING; // Set to processing state
+                modbusPort->state = MB_PORT_STATE_MASTER_RESET;
                 break;
             }
-            case MB_PORT_STATE_RX_PROCESSING:
-            {
-                modbusPort->state = MB_PORT_STATE_RESET;
-                break;
-            }
-            case MB_PORT_STATE_RESET:
+            case MB_PORT_STATE_MASTER_RESET:
             {
                 // Reset the Modbus port state
                 modbusPort->state = MB_PORT_STATE_IDLE; // Reset to idle state
@@ -82,7 +89,7 @@ static void modbusTaskHandler(void * argument)
             default:
                 break;
         }
-        osDelay(1000); 
+        osDelay(10); 
     }
     osThreadExit(); // Exit the task when done
 }
@@ -108,18 +115,20 @@ gsg_result_t MB_createPortStatic(modbus_port_t * port)
     memset(port->rx_buffer, 0, MODBUS_PORT_RX_BUFFER_SIZE);
     memset(port->tx_buffer, 0, MODBUS_PORT_TX_BUFFER_SIZE);
 
-    // Initialize registers, buffers, etc. as needed
-    if(port->holdingRegistersCount  == 0)
-        port->holdingRegisters       = NULL;
+    #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == ENABLED)
+        // Initialize registers, buffers, etc. as needed
+        if(port->holdingRegistersCount  == 0)
+            port->holdingRegisters       = NULL;
 
-    if(port->inputRegistersCount   == 0)
-        port->inputRegisters        = NULL;
+        if(port->inputRegistersCount   == 0)
+            port->inputRegisters        = NULL;
 
-    if(port->discreteInputsCount  == 0)
-        port->discreteInputs       = NULL;
+        if(port->discreteInputsCount  == 0)
+            port->discreteInputs       = NULL;
 
-    if(port->coilsCount            == 0)
-        port->coils                = NULL;
+        if(port->coilsCount            == 0)
+            port->coils                = NULL;
+    #endif
 
     return GSG_SUCCESS;
 
@@ -131,12 +140,20 @@ gsg_result_t MB_startPort(modbus_port_t * port)
     if (port == NULL)
         return GSG_INVALID_ARG;
 
-    if(port->state != MB_PORT_STATE_DISABLED)
+    if (port->state != MB_PORT_STATE_DISABLED)
         return GSG_ERROR; // Port is already started or in use
 
-    // Also pass the port struct to the task
+    // Start Modbus task
     port->taskHandle = osThreadNew(modbusTaskHandler, port, &port->taskAttributes);
+    if (port->taskHandle == NULL)
+        return GSG_ERROR;
 
+    // Start periodic query timer and save the handle
+    port->queryTimerHandle = osTimerNew(mbMasterQueryTimerHandler, osTimerPeriodic, port, NULL);
+    if (port->queryTimerHandle == NULL)
+        return GSG_ERROR;
+
+    osTimerStart(port->queryTimerHandle, 100); // 100 ms periodic timer
     return GSG_SUCCESS;
 }
 
@@ -165,4 +182,106 @@ gsg_result_t MB_destroyPort(modbus_port_t * port)
     return GSG_SUCCESS;
 }
 
+gsg_result_t MB_registerSlaveInfo(modbus_slave_info_t * slave )
+{
+    if (slaveCount >= MODBUS_MASTER_MAX_SLAVES)
+        return GSG_OVERFLOW; // Maximum number of slaves reached
 
+    // Check if the slave ID already exists
+    for (uint8_t i = 0; i < slaveCount; i++)
+    {
+        if (slaveInfo[i].id == slave->id)
+            return GSG_INVALID_ARG; // Slave ID already exists
+    }
+
+    // Register the new slave information
+    slaveInfo[slaveCount].id                = slave->id;
+    slaveInfo[slaveCount].phy               = slave->phy;
+    slaveInfo[slaveCount].status            = 0; // Initialize status to 0
+    
+    #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == DISABLED)
+
+        if(slave->holdingRegistersCount > 0)
+        {
+            slaveInfo[slaveCount].holdingRegisters = slave->holdingRegisters; // Pointer to holding registers
+            slaveInfo[slaveCount].holdingRegistersCount = slave->holdingRegistersCount; // Count of holding registers
+        }
+        else
+        {
+            slaveInfo[slaveCount].holdingRegisters = NULL; // Initialize to NULL
+            slaveInfo[slaveCount].holdingRegistersCount = 0; // Initialize count to 0
+        }
+        if(slave->inputRegistersCount > 0)
+        {
+            slaveInfo[slaveCount].inputRegisters = slave->inputRegisters; // Pointer to input registers
+            slaveInfo[slaveCount].inputRegistersCount = slave->inputRegistersCount; // Count of input registers
+        }
+        else
+        {
+            slaveInfo[slaveCount].inputRegisters = NULL; // Initialize to NULL
+            slaveInfo[slaveCount].inputRegistersCount = 0; // Initialize count to 0
+        }
+        if(slave->coilsCount > 0)
+        {
+            slaveInfo[slaveCount].coils = slave->coils; // Pointer to coils
+            slaveInfo[slaveCount].coilsCount = slave->coilsCount; // Count of coils
+        }
+        else
+        {
+            slaveInfo[slaveCount].coils = NULL; // Initialize to NULL
+            slaveInfo[slaveCount].coilsCount = 0; // Initialize count to 0
+        }
+        if(slave->discreteInputsCount > 0)
+        {
+            slaveInfo[slaveCount].discreteInputs = slave->discreteInputs; // Pointer to discrete inputs
+            slaveInfo[slaveCount].discreteInputsCount = slave->discreteInputsCount; // Count of discrete inputs
+        }
+        else
+        {
+            slaveInfo[slaveCount].discreteInputs = NULL; // Initialize to NULL
+            slaveInfo[slaveCount].discreteInputsCount = 0; // Initialize count to 0
+        }
+    #else
+        slaveInfo[slaveCount].holdingRegOffset = holdingRegOffset;
+        slaveInfo[slaveCount].inputRegOffset   = inputRegOffset;
+        slaveInfo[slaveCount].coilsOffset      = coilsOffset;
+        slaveInfo[slaveCount].discreteInpOffset = discreteInpOffset;
+    #endif
+
+    slaveCount++;
+    return GSG_SUCCESS;
+}
+
+gsg_result_t MB_unregisterSlaveInfo(uint8_t slaveId)
+{
+    for (uint8_t i = 0; i < slaveCount; i++)
+    {
+        if (slaveInfo[i].id == slaveId)
+        {
+            // Put reset value in that slave info
+            slaveInfo[i].id = 0;
+            slaveInfo[i].phy = MODBUS_PHY_NONE;
+            slaveInfo[i].status = 0; // Reset status
+
+            #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == DISABLED)
+                slaveInfo[i].holdingRegisters = NULL;
+                slaveInfo[i].holdingRegistersCount = 0;
+                slaveInfo[i].inputRegisters = NULL;
+                slaveInfo[i].inputRegistersCount = 0;
+                slaveInfo[i].coils = NULL;
+                slaveInfo[i].coilsCount = 0;
+                slaveInfo[i].discreteInputs = NULL;
+                slaveInfo[i].discreteInputsCount = 0;
+            #else
+                slaveInfo[i].holdingRegOffset = 0;
+                slaveInfo[i].inputRegOffset = 0;
+                slaveInfo[i].coilsOffset = 0;
+                slaveInfo[i].discreteInpOffset = 0;
+            #endif
+
+            slaveCount--;
+            return GSG_SUCCESS;
+        }
+    }
+    return GSG_INVALID_ARG; // Slave ID not found
+}

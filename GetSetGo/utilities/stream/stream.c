@@ -8,11 +8,20 @@
 #endif
 
 static TaskHandle_t streamTaskHandle = NULL;
+static osThreadId_t              streamTaskHandle = NULL;
+static const osThreadAttr_t      streamTask_attributes = {
+                                   .name = "STREAM",
+                                   .stack_size = STREAM_TASK_STACK_SIZE,
+                                   .priority = STREAM_TASK_PRIORITY,
+                               };
+static streamTxCallback_t    streamTxCallback = NULL;
+
+
 static void sendStreamData(char *data);
 
 static void streamTask( void *arg)
 {
-    char hex[100] = {0};
+    char dataBuff[100] = {0};
     char temp[15] = {0};
     uint32_t notificationValue = 0;
 
@@ -27,11 +36,12 @@ static void streamTask( void *arg)
 
     while(1)
     {
+        uint8_t dataLength = 0;
         // Wait for a notification from the PLC task
         // if(xTaskNotifyWait(0, 0, NULL, portMAX_DELAY) == pdTRUE)
         {
             // Append the prefix
-            sprintf(hex, "$");
+            sprintf(dataBuff, "$");
             // Append the stream variables
             for(uint8_t i = 0; i < STREAM_MAX_PARAMETERS; i++)
             {
@@ -50,35 +60,36 @@ static void streamTask( void *arg)
                 #endif
 
                 sprintf(temp,"%d",value);
-                strcat(hex, temp);
-                strcat(hex, " ");
+                strcat(dataBuff, temp);
+                strcat(dataBuff, " ");
             }
             // Append the suffix to the string
-            if(strlen(hex) > 1)     // Remove the last space and add a semicolon
+            dataLength = strlen(dataBuff);
+
+            if(dataLength > 1)
             {
-                hex[strlen(hex) - 1] = '\0';
-                strcat(hex, ";");
+                dataBuff[dataLength - 1] = '\0';// Remove the last space and add a semicolon
+                strcat(dataBuff, ";");
             }
-            else if(strlen(hex) == 1)  // there was no variable to stream
+            else if(dataLength == 1)  // there was no variable to stream
             {
-                strcat(hex, "0;");
-            } 
-            sendStreamData(hex);
-            memset(hex, 0, sizeof(hex)); // Clear the hex buffer
-            vTaskDelay(STREAM_INTERVAL_MS); // Delay for the specified interval
+                strcat(dataBuff, "0;");
+            }
+            
+            if(streamTxCallback != NULL)
+            {
+                streamTxCallback(dataBuff); // Send the data using the callback
+            }
+            memset(dataBuff, 0, sizeof(dataBuff)); // Clear the data buffer
+            osDelay(STREAM_INTERVAL_MS); // Delay for the specified interval
         }
     }
-    vTaskDelete(NULL);
+    osThreadExit(); // Exit the thread gracefully
 }
 
 void Stream_Init(void)
 {
-    xTaskCreate( streamTask
-               , "STREAM"
-               , STREAM_TASK_STACK_SIZE
-               , NULL
-               , STREAM_TASK_PRIORITY
-               , &streamTaskHandle );
+    streamTaskHandle = osThreadNew(streamTask, NULL, &streamTask_attributes);
 }
 
 #if (STREAM_USE_VAR_PTR == 1)
@@ -129,11 +140,6 @@ void Stream_resetData(uint8_t index)
 }
 #endif
 
-static void sendStreamData(char *data)
-{
-    DEBUG_LOG_RAW(data);
-}
-
 void Stream_triggerData( void )
 {
     extern TaskHandle_t streamTaskHandle;
@@ -143,4 +149,11 @@ void Stream_triggerData( void )
     {
         xTaskNotify(streamTaskHandle, 0, eNoAction); // Notify the stream task to send data
     }
+}
+
+void Stream_setTxCallback(streamTxCallback_t callback)
+{
+    if(callback == NULL)
+        return;
+    streamTxCallback = callback;
 }

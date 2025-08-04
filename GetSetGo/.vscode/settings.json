@@ -4,6 +4,8 @@
         "gsg_base.h": "c",
         "debug.h": "c",
         "gsg_config.h": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "stream.h": "c",
+        "modbus_master.h": "c"
     }
 }

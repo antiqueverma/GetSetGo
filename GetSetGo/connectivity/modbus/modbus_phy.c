@@ -6,14 +6,16 @@
 
 #include "modbus.h"
 
+
 static modbusTxCallback_t modbusPhyTxCallbacks[_MODBUS_PHY_MAX] = {0};
 
 // Mutex per phy channel to protect access to the callbacks
 static osMutexId_t modbusPhyTxMutex[_MODBUS_PHY_MAX];
 
 
-static gsg_result_t mbPhyPreTx(modbus_port_t *port, uint8_t *data, uint16_t size);
+static uint16_t mbPhyPreTx(modbus_port_t *port, uint8_t *data, uint16_t size);
 static uint16_t mbPhyCalculateCRC16(uint8_t *data, uint16_t size);
+static uint8_t  mbPhyCalculateLRC(uint8_t *data, uint16_t size);
 
 gsg_result_t MB_registerPhyTxCallback(modbus_phy_t phy, modbusTxCallback_t cb)
 {
@@ -54,8 +56,9 @@ gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size)
         return GSG_INVALID_ARG;
 
     // Port will be in a valid state to send data, hence no need to validate state
+    uint16_t newSize = size;
 
-    mbPhyPreTx(port, data, size);
+    newSize = mbPhyPreTx(port, data, size);
 
     // Set the port state to transmitting
     port->state = MB_PORT_STATE_TRANSMITTING;
@@ -64,32 +67,38 @@ gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size)
     if (modbusPhyTxCallbacks[port->phy] != NULL)
     {
         osMutexAcquire(modbusPhyTxMutex[port->phy], osWaitForever);
-        modbusPhyTxCallbacks[port->phy](data, size);
+        modbusPhyTxCallbacks[port->phy](data, newSize);
         osMutexRelease(modbusPhyTxMutex[port->phy]);
         port->state = MB_PORT_STATE_TX_COMPLETE;
         return GSG_SUCCESS;
     }
     else
+    {
+        DEBUG_LOGI(DEBUG_TAG_COMM,"MB", "No Tx callback registered for phy");
         return GSG_NOT_IMPLEMENTED; // No callback registered for this physical layer
+    }
+        
 }
 
-static gsg_result_t mbPhyPreTx(modbus_port_t *port, uint8_t *data, uint16_t size)
+static uint16_t mbPhyPreTx(modbus_port_t *port, uint8_t *data, uint16_t size)
 {
     // port struct is already validated in mbMaster_sendData
-    
-    // Calculate and append the CRC16 for the data
-    if(port->phy != MODBUS_PHY_TCP && port->phy != MODBUS_PHY_UDP)
-    {
-        uint16_t crc = mbPhyCalculateCRC16(data, size);
-        data[size] = crc & 0xFF;
-        data[size + 1] = (crc >> 8) & 0xFF;
-    }
-
+//    uint16_t newSize = 0;
     if(port->flags.asciiMode)
     {
         // Convert data to ASCII format if necessary
         // This is a placeholder for actual conversion logic
         // For now, we assume data is already in ASCII format
+    }
+    else
+    {
+        // Calculate and append the CRC16 for the data
+        if(port->phy != MODBUS_PHY_TCP && port->phy != MODBUS_PHY_UDP)
+        {
+            uint16_t crc = mbPhyCalculateCRC16(data, size);
+            data[size] = crc & 0xFF;
+            data[size + 1] = (crc >> 8) & 0xFF;
+        }
     }
 
     if(port->flags.encrypt)
@@ -118,3 +127,15 @@ static uint16_t mbPhyCalculateCRC16(uint8_t *data, uint16_t size)
     }
     return crc;
 }
+
+static uint8_t mbPhyCalculateLRC(uint8_t *data, uint16_t size)
+{
+    uint8_t lrc = 0;
+    for (uint16_t i = 0; i < size; i++)
+    {
+        lrc += data[i];
+    }
+    lrc = (~lrc) + 1; // Two's complement
+    return lrc;
+}
+
