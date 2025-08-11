@@ -24,7 +24,18 @@ static void modbusTaskHandler(void * argument)
     // typecast the port parameter to modbus_port_t pointer
     modbus_port_t *modbusPort = (modbus_port_t *)argument;
     char tempBuffer[64]; // Temporary buffer for debug messages
+    mb_master_query_t queryTodo;
+
     modbusPort->state = MB_PORT_STATE_MASTER_IDLE; // Set initial state to disabled
+
+    // Dummy query for testing
+    // mb_master_query_t query;
+    // query.address = 0;
+    // query.regCount = 5;
+    // query.type = MB_QUERY_READ_HOLDING_REGISTERS;
+    // query.periodicity = MB_MASTER_QUERY_PERIOD_1_S;
+    // query.slaveId = 1;
+    // memcpy(&modbusPort->currentQuery, &query, sizeof(mb_master_query_t));
 
     // Modbus task implementation
     while (1)
@@ -33,32 +44,46 @@ static void modbusTaskHandler(void * argument)
         if(modbusPort->state != prvState)
         {
             prvState = modbusPort->state; // Update previous state
-            sprintf(tempBuffer,"State: %d", modbusPort->state);
-            DEBUG_LOGI(DEBUG_TAG_COMM,"MB",tempBuffer);
+//            sprintf(tempBuffer,"State: %d", modbusPort->state);
+//            DEBUG_LOGI(DEBUG_TAG_MODBUS,"MB",tempBuffer);
         }
 
         // Modbus port state machine
         switch (modbusPort->state)
         {
             // Master Mode States
-
             case MB_PORT_STATE_MASTER_IDLE:
             {
-                // Check if there is a query registered for master mode
-                if (modbusPort->currentQuery.slaveId)
+                mb_master_query_t *queryPtr = NULL; // Temporary pointer to receive from queue
+
+                // Wait up to 500ms for a query to be available in the queue
+                if (osMessageQueueGet(modbusPort->queryQueueHandle,
+                                    &queryPtr,
+                                    NULL,
+                                    500) == osOK)  // Timeout in ms
                 {
-                    modbusPort->state = MB_PORT_STATE_MASTER_TX_PROCESSING; // Set to processing state
+                    // Copy the struct data from the queued pointer to local variable
+                    if(queryPtr != NULL)
+                    {
+                        queryTodo = *queryPtr;
+                        // Move to next state
+                        modbusPort->state = MB_PORT_STATE_MASTER_TX_PROCESSING;
+                    }
                 }
+                else
+                {
+                    // No query in queue within 500ms, remain idle
+                }   
                 break;
             }
             case MB_PORT_STATE_MASTER_TX_PROCESSING:
             {
                 mbTxGenFrame(modbusPort, 
-                                modbusPort->currentQuery.type, 
-                                modbusPort->currentQuery.slaveId, 
-                                modbusPort->currentQuery.address, 
-                                modbusPort->currentQuery.regCount);
-                
+                                queryTodo.type, 
+                                queryTodo.slaveId, 
+                                queryTodo.address, 
+                                queryTodo.regCount);
+
                 modbusPort->state = MB_PORT_STATE_MASTER_TRANSMITTING;
                 break;
             }
@@ -82,9 +107,7 @@ static void modbusTaskHandler(void * argument)
             }
             case MB_PORT_STATE_MASTER_RESET:
             {
-                // Reset the Modbus port state
-                // Clear the current query after processing
-                memset(&modbusPort->currentQuery, 0, sizeof(mb_master_query_t));
+                // Reset the Modbus port state      
                 modbusPort->state = MB_PORT_STATE_MASTER_IDLE; // Reset to idle state
                 break;
             }
@@ -96,7 +119,6 @@ static void modbusTaskHandler(void * argument)
             default:
                 break;
         }
-        osDelay(100);
     }
     osThreadExit(); // Exit the task when done
 }
@@ -149,6 +171,25 @@ gsg_result_t MB_startPort(modbus_port_t * port)
     if (port->state != MB_PORT_STATE_DISABLED)
         return GSG_ERROR; // Port is already started or in use
 
+    // Create event flags
+    port->eventHandle = osEventFlagsNew(NULL);
+    if (port->eventHandle == NULL)
+        return GSG_ERROR;
+
+    #if (MODBUS_MASTER_MODE == ENABLED)
+        if(port->mode == MODBUS_MODE_MASTER)
+        {
+            // Create query queue (FIFO for pending queries)
+            port->queryQueueHandle = osMessageQueueNew(
+                MODBUS_MASTER_QUERY_QUEUE_LENGTH,             // max queue length
+                sizeof(mb_master_query_t *),           // item size
+                NULL
+            );
+            if (port->queryQueueHandle == NULL)
+                return GSG_ERROR;
+        }
+    #endif
+
     // Start Modbus task
     const osThreadAttr_t defaultTask_attributes = {
       .name = "defaultTask",
@@ -160,13 +201,16 @@ gsg_result_t MB_startPort(modbus_port_t * port)
     		port,
 			&defaultTask_attributes);
     if (port->taskHandle == NULL)
+    {
+    	DEBUG_LOGE(DEBUG_TAG_MODBUS,"MB","Error Creating task");
         return GSG_ERROR;
+    }
 
     // Start periodic query timer and save the handle
-//    port->queryTimerHandle = osTimerNew(mbMasterQueryTimerHandler, osTimerPeriodic, port, NULL);
+    port->queryTimerHandle = osTimerNew(mbMasterQueryTimerHandler, osTimerPeriodic, port, NULL);
     if (port->queryTimerHandle == NULL)
         return GSG_ERROR;
-//    osTimerStart(port->queryTimerHandle, 100); // 100 ms periodic timer
+    osTimerStart(port->queryTimerHandle, 100); // 100 ms periodic timer
     return GSG_SUCCESS;
 }
 

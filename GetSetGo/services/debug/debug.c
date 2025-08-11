@@ -30,7 +30,7 @@ static uint32_t getTimeStamp( void );
 // User Accessible API
 void DEBUG_Init( void )
 {
-   debugLevelMax = DEBUG_LEVEL_INFO;
+   debugLevelMax = DEBUG_LEVEL_VERBOSE;
    debugTagMask = UINT64_MAX;
    debugTaskHandle = osThreadNew(debugTask, NULL, &debugTask_attributes);
 }
@@ -43,8 +43,9 @@ void DEBUG_Log_Switch(debugTagId_t tag, bool enable)
 }
 void DEBUG_LogLevelSet(uint8_t level)
 {
-   if(level >= DEBUG_LEVEL_INFO)   level = DEBUG_LEVEL_INFO;
-   debugLevelMax = level;
+    if(level >= DEBUG_LEVEL_VERBOSE)   
+        level = DEBUG_LEVEL_VERBOSE;
+    debugLevelMax = level;
 }
 uint8_t DEBUG_LogLevelGet( void )
 {

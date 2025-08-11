@@ -102,6 +102,6 @@ void mbTxGenFrame(modbus_port_t *port, mb_query_type_t queryType, uint8_t slaveI
             return; // Unsupported query type
     }
     // Set the frame length
-    port->tx_buffer_length = frame_length + 2; // Add 2 for CRC
+    port->tx_buffer_length = frame_length; // Add 2 for CRC
     // CRC will be appended by PHY layer
 }

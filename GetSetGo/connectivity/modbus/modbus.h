@@ -5,23 +5,34 @@
 #include "gsg_base.h"
 
 
-// Modbus Library Configuration
+/**************************************************************************************************************
+ *                                          Modbus Library Configuration
+ **************************************************************************************************************/
+// OS Configuration
 #define MODBUS_TASK_PRIORITY                            osPriorityNormal
 #define MODBUS_TASK_STACK_SIZE                          KB_2_B(6)
-#define MODBUS_PORT_MAX_COUNT                           5 // Maximum number of Modbus ports
 #define MODBUS_PORT_USE_HEAP                            DISABLED
+
+// Port Configurations
+#define MODBUS_PORT_MAX_COUNT                           5 // Maximum number of Modbus ports
+
+// Master mode configurations
 #define MODBUS_MASTER_MODE                              ENABLED
 #define MODBUS_MASTER_MAX_SLAVES                        10 // Maximum 255 slaves supported
 #define MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP          DISABLED
-#define MODBUS_MASTER_QUERY_MAX                         10 // Maximum number of periodic queries
+#define MODBUS_MASTER_QUERY_LIST_LENGTH                 10 // Maximum number of queries that can be registered
+#define MODBUS_MASTER_QUERY_QUEUE_LENGTH                5 // Maximum number of queries that can wait to be processed
 
+// Slave mode configurations
 #define MODBUS_SLAVE_MODE                               ENABLED
 
 #if MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP 
     #error "Unified register map is not yet supported in this version of the Modbus library."
 #endif
 
-// Typedefs - enums
+/**************************************************************************************************************
+ *                                          Modbus Library Typedefs
+ **************************************************************************************************************/
 
 // Modbus Physical Layer Types
 typedef enum {
@@ -126,8 +137,19 @@ typedef enum{
     MB_QUERY_WRITE_HOLDING_REGISTERS,
 } mb_query_type_t;
 
+typedef enum
+{
+    MODBUS_EVENT_RX_READY       = (1U << 0), 
+    MODBUS_EVENT_TX_COMPLETE    = (1U << 1), 
+    MODBUS_EVENT_ERROR          = (1U << 2), 
+    MODBUS_EVENT_TIMEOUT        = (1U << 3), 
+    MODBUS_EVENT_QUERY_TODO     = (1U << 4),
+} ModbusEventFlags_t;
+
+
 // Modbus Master Query Periodicity
 typedef enum{
+    MB_MASTER_QUERY_DISABLED = 0,
     MB_MASTER_QUERY_APERIODIC,
     MB_MASTER_QUERY_PERIOD_100_MS,
     MB_MASTER_QUERY_PERIOD_200_MS,
@@ -138,6 +160,9 @@ typedef enum{
     MB_MASTER_QUERY_PERIOD_30_S,
     MB_MASTER_QUERY_PERIOD_1_MIN,
     MB_MASTER_QUERY_PERIOD_5_MIN,
+    MB_MASTER_QUERY_PERIOD_10_MIN,
+    MB_MASTER_QUERY_PERIOD_30_MIN,
+    MB_MASTER_QUERY_PERIOD_1_HOUR,
 } mb_master_query_periodicity_t;
 
 typedef struct {
@@ -187,13 +212,16 @@ typedef struct{
         uint16_t tx_buffer_length; // Length of the transmit buffer
     #endif
 
+    // OS Thread Management
     osThreadId_t                taskHandle;
     const osThreadAttr_t        taskAttributes;
+    osEventFlagsId_t            eventHandle;
 
     #if (MODBUS_MASTER_MODE == ENABLED)
         osTimerId_t                 queryTimerHandle;
-        mb_master_query_t           *queryList[MODBUS_MASTER_QUERY_MAX];
-        mb_master_query_t           currentQuery; // Pointer to the currently executing query
+        mb_master_query_t           *queryTable;
+        uint16_t                    queryTableLength;
+        osMessageQueueId_t          queryQueueHandle;
     #endif
 
     #if MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP
@@ -239,17 +267,23 @@ typedef struct {
     #endif
 } modbus_slave_info_t;
 
-
-
-
 typedef void (*modbusTxCallback_t)(const uint8_t *data, uint16_t size);
 
-// Modbus Library Function Prototypes
+
+/**************************************************************************************************************
+ *                                          Modbus Library API
+ **************************************************************************************************************/
+// Port Management API
 gsg_result_t MB_createPortStatic(modbus_port_t * port);
 gsg_result_t MB_startPort(modbus_port_t * port);
 gsg_result_t MB_destroyPort(modbus_port_t * port);
+
+// Physical layer config API
 gsg_result_t MB_registerPhyTxCallback(modbus_phy_t phy, modbusTxCallback_t cb);
 gsg_result_t MB_unregisterPhyTxCallback(modbus_phy_t phy);
 
- 
+// Master mode API
+gsg_result_t MB_masterRegisterQuery(modbus_port_t *port, const mb_master_query_t *query);
+gsg_result_t MB_masterUnregisterQuery(modbus_port_t *port, const mb_master_query_t *query);
+
 #endif /* MODBUS_H_ */

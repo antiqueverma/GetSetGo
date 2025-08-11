@@ -12,10 +12,16 @@
 #define DEBUG_TAG_EN                1
 #define DEBUG_TIMESTAMP_EN          1       // 0:Disable, 1:10ms, 2: 100ms, 3:1000ms 
 // Debugger Macros
-#define DEBUG_LEVEL_NONE            0
-#define DEBUG_LEVEL_ERR             1
-#define DEBUG_LEVEL_WARN            2
-#define DEBUG_LEVEL_INFO            3
+typedef enum {
+   DEBUG_LEVEL_NONE,
+   DEBUG_LEVEL_ERR,
+   DEBUG_LEVEL_WARN,
+   DEBUG_LEVEL_INFO,
+   DEBUG_LEVEL_DEBUG,
+   DEBUG_LEVEL_VERBOSE,
+} debugLevel_t;
+
+
 typedef enum {
 	DEBUG_TAG_RANDOM = 0,
    DEBUG_TAG_APP ,
@@ -23,6 +29,10 @@ typedef enum {
    DEBUG_TAG_SENSOR,
    DEBUG_TAG_SD ,
    DEBUG_TAG_UI ,
+
+
+   // GSG MODULES
+   DEBUG_TAG_MODBUS,
    _DEBUG_TAG_MAX
 } debugTagId_t;
 
@@ -40,21 +50,25 @@ typedef enum {
 
 #if DEBUG_LOG_EN
    // Debugger User-API
-    #define DEBUG_LOGE(id,tag,msg) \
-       if (DEBUG_LogLevelGet() >= 1) { debugLog(id, 'E', tag, msg); }
-    #define DEBUG_LOGW(id,tag,msg) \
-       if (DEBUG_LogLevelGet() >= 2) { debugLog(id, 'W', tag, msg); }
-    #define DEBUG_LOGI(id,tag,msg) \
-       if (DEBUG_LogLevelGet() >= 3) { debugLog(id, 'I', tag, msg); }
-    #define DEBUG_LOG_RAW(msg) \
-       if (DEBUG_LogLevelGet() >= 0) { debugLogRaw(msg); }
-    #define DEBUG_ASSERT(condition)                                      \
-    do {                                                             \
-        if (!(condition)) {                                          \
-            debugLog(0, 'A', __FILE__, "ASSERT");           \
-            while (0);                                               \
-        }                                                            \
-    } while (0)
+   #define DEBUG_LOGE(id,tag,msg) \
+      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_ERR) { debugLog(id, 'E', tag, msg); }
+   #define DEBUG_LOGW(id,tag,msg) \
+      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_WARN) { debugLog(id, 'W', tag, msg); }
+   #define DEBUG_LOGI(id,tag,msg) \
+      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_INFO) { debugLog(id, 'I', tag, msg); }
+   #define DEBUG_LOGD(id,tag,msg) \
+      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG) { debugLog(id, 'D', tag, msg); }
+   #define DEBUG_LOGV(id,tag,msg) \
+      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_VERBOSE) { debugLog(id, 'V', tag, msg); }
+
+   #define DEBUG_LOG_RAW(msg) \
+      if (DEBUG_LogLevelGet() >= 0) { debugLogRaw(msg); }
+   #define DEBUG_ASSERT(condition)                                      \
+      do {                                                             \
+         if (!(condition)) {                                          \
+               debugLog(0, 'A', __FILE__, "ASSERT");           \
+         }                                                            \
+      } while (0)
     // osKernelLock();
     
 #else

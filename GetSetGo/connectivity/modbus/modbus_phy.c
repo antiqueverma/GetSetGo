@@ -64,13 +64,26 @@ gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size)
     if (modbusPhyTxCallbacks[port->phy] != NULL)
     {
         osMutexAcquire(modbusPhyTxMutex[port->phy], osWaitForever);
-        modbusPhyTxCallbacks[port->phy](data, newSize);
+       modbusPhyTxCallbacks[port->phy](data, newSize);
+
+        char hex[20];
+
+        if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG)
+        {
+            sprintf(hex,"Tx[%d]> ",newSize);
+            DEBUG_LOGD(DEBUG_TAG_MODBUS,"MB",hex);
+            for(uint16_t i=0; i<newSize ; i++ )
+            {
+                sprintf(hex,"%.2X  ",data[i]); 		DEBUG_LOG_RAW(hex);
+            }
+        }
+
         osMutexRelease(modbusPhyTxMutex[port->phy]);
         return GSG_SUCCESS;
     }
     else
     {
-        DEBUG_LOGI(DEBUG_TAG_COMM,"MB", "No Tx callback registered for phy");
+        DEBUG_LOGE(DEBUG_TAG_COMM,"MB", "No Tx callback registered for phy");
         return GSG_NOT_IMPLEMENTED; // No callback registered for this physical layer
     }
         
@@ -92,8 +105,8 @@ static uint16_t mbPhyPreTx(modbus_port_t *port, uint8_t *data, uint16_t size)
         if(port->phy != MODBUS_PHY_TCP && port->phy != MODBUS_PHY_UDP)
         {
             uint16_t crc = mbPhyCalculateCRC16(data, size);
-            data[size] = crc & 0xFF;
-            data[size + 1] = (crc >> 8) & 0xFF;
+            data[size++] = crc & 0xFF;
+            data[size++] = (crc >> 8) & 0xFF;
         }
     }
 
@@ -103,7 +116,7 @@ static uint16_t mbPhyPreTx(modbus_port_t *port, uint8_t *data, uint16_t size)
         // This is a placeholder for actual encryption logic
         // For now, we assume data is already encrypted
     }
-    return GSG_SUCCESS; // at the end
+    return size; // at the end
 
 }
 
