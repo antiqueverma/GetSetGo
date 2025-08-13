@@ -6,11 +6,6 @@ char 			debugTag[] = "MB";
 
 static uint8_t portCount = 0; // Counter for the number of ports
 
-#if (MODBUS_MASTER_MODE == ENABLED)
-    static modbus_slave_info_t slaveInfo[MODBUS_MASTER_MAX_SLAVES]; // Array to hold slave information
-    static uint8_t slaveCount = 0; // Counter for the number of slaves
-#endif
-
 // Private function prototypes
 static void modbusTaskHandler(void *pvParameters);
 void mbMasterPushQueryTimerCallback(void *arg);
@@ -109,6 +104,7 @@ static void modbusTaskHandler(void * argument)
             {
                 // Reset the Modbus port state      
                 modbusPort->state = MB_PORT_STATE_MASTER_IDLE; // Reset to idle state
+                osDelay(100);
                 break;
             }
             case MB_PORT_STATE_DISABLED:
@@ -239,106 +235,3 @@ gsg_result_t MB_destroyPort(modbus_port_t * port)
     return GSG_SUCCESS;
 }
 
-gsg_result_t MB_registerSlaveInfo(modbus_slave_info_t * slave )
-{
-    if (slaveCount >= MODBUS_MASTER_MAX_SLAVES)
-        return GSG_OVERFLOW; // Maximum number of slaves reached
-
-    // Check if the slave ID already exists
-    for (uint8_t i = 0; i < slaveCount; i++)
-    {
-        if (slaveInfo[i].id == slave->id)
-            return GSG_INVALID_ARG; // Slave ID already exists
-    }
-
-    // Register the new slave information
-    slaveInfo[slaveCount].id                = slave->id;
-    slaveInfo[slaveCount].phy               = slave->phy;
-    slaveInfo[slaveCount].status            = 0; // Initialize status to 0
-    
-    #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == DISABLED)
-
-        if(slave->holdingRegistersCount > 0)
-        {
-            slaveInfo[slaveCount].holdingRegisters = slave->holdingRegisters; // Pointer to holding registers
-            slaveInfo[slaveCount].holdingRegistersCount = slave->holdingRegistersCount; // Count of holding registers
-        }
-        else
-        {
-            slaveInfo[slaveCount].holdingRegisters = NULL; // Initialize to NULL
-            slaveInfo[slaveCount].holdingRegistersCount = 0; // Initialize count to 0
-        }
-        if(slave->inputRegistersCount > 0)
-        {
-            slaveInfo[slaveCount].inputRegisters = slave->inputRegisters; // Pointer to input registers
-            slaveInfo[slaveCount].inputRegistersCount = slave->inputRegistersCount; // Count of input registers
-        }
-        else
-        {
-            slaveInfo[slaveCount].inputRegisters = NULL; // Initialize to NULL
-            slaveInfo[slaveCount].inputRegistersCount = 0; // Initialize count to 0
-        }
-        if(slave->coilsCount > 0)
-        {
-            slaveInfo[slaveCount].coils = slave->coils; // Pointer to coils
-            slaveInfo[slaveCount].coilsCount = slave->coilsCount; // Count of coils
-        }
-        else
-        {
-            slaveInfo[slaveCount].coils = NULL; // Initialize to NULL
-            slaveInfo[slaveCount].coilsCount = 0; // Initialize count to 0
-        }
-        if(slave->discreteInputsCount > 0)
-        {
-            slaveInfo[slaveCount].discreteInputs = slave->discreteInputs; // Pointer to discrete inputs
-            slaveInfo[slaveCount].discreteInputsCount = slave->discreteInputsCount; // Count of discrete inputs
-        }
-        else
-        {
-            slaveInfo[slaveCount].discreteInputs = NULL; // Initialize to NULL
-            slaveInfo[slaveCount].discreteInputsCount = 0; // Initialize count to 0
-        }
-    #else
-        slaveInfo[slaveCount].holdingRegOffset = holdingRegOffset;
-        slaveInfo[slaveCount].inputRegOffset   = inputRegOffset;
-        slaveInfo[slaveCount].coilsOffset      = coilsOffset;
-        slaveInfo[slaveCount].discreteInpOffset = discreteInpOffset;
-    #endif
-
-    slaveCount++;
-    return GSG_SUCCESS;
-}
-
-gsg_result_t MB_unregisterSlaveInfo(uint8_t slaveId)
-{
-    for (uint8_t i = 0; i < slaveCount; i++)
-    {
-        if (slaveInfo[i].id == slaveId)
-        {
-            // Put reset value in that slave info
-            slaveInfo[i].id = 0;
-            slaveInfo[i].phy = MODBUS_PHY_NONE;
-            slaveInfo[i].status = 0; // Reset status
-
-            #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == DISABLED)
-                slaveInfo[i].holdingRegisters = NULL;
-                slaveInfo[i].holdingRegistersCount = 0;
-                slaveInfo[i].inputRegisters = NULL;
-                slaveInfo[i].inputRegistersCount = 0;
-                slaveInfo[i].coils = NULL;
-                slaveInfo[i].coilsCount = 0;
-                slaveInfo[i].discreteInputs = NULL;
-                slaveInfo[i].discreteInputsCount = 0;
-            #else
-                slaveInfo[i].holdingRegOffset = 0;
-                slaveInfo[i].inputRegOffset = 0;
-                slaveInfo[i].coilsOffset = 0;
-                slaveInfo[i].discreteInpOffset = 0;
-            #endif
-
-            slaveCount--;
-            return GSG_SUCCESS;
-        }
-    }
-    return GSG_INVALID_ARG; // Slave ID not found
-}

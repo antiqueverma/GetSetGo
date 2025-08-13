@@ -60,15 +60,15 @@ static uint8_t mb_reg_table_write(modbus_register_t *reg, void *value)
     return 1; // Success
 }
 
-static uint8_t mb_reg_table_read(modbus_register_t *reg, void *value)
+static uint8_t mb_reg_table_read(modbus_port_t *port, uint8_t slaveId, void *value )
 {
-    if (reg == NULL || value == NULL) 
+    if (port == NULL || value == NULL) 
     {
         return 0; // Error: Null pointer
     }
 
     // Check if the register is readable
-    if (!(reg->flags & MB_REG_FLAG_READ))
+//    if (!(reg->flags & MB_REG_FLAG_READ))
     {
         return 0; // Error: Register is not readable
     }

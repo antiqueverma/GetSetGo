@@ -22,6 +22,7 @@
 #define MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP          DISABLED
 #define MODBUS_MASTER_QUERY_LIST_LENGTH                 10 // Maximum number of queries that can be registered
 #define MODBUS_MASTER_QUERY_QUEUE_LENGTH                5 // Maximum number of queries that can wait to be processed
+#define MODBUS_MASTER_SLAVE_MAX_COUNT                   10 // Maximum number of slaves supported
 
 // Slave mode configurations
 #define MODBUS_SLAVE_MODE                               ENABLED
@@ -195,6 +196,37 @@ typedef struct {
 } mb_master_query_t;
 
 typedef struct{
+    uint8_t connected:1;
+    uint8_t reserved:7;
+} modbus_slave_info_flags_t;
+
+typedef struct {
+
+    uint8_t                             id; // Slave ID
+    modbus_slave_info_flags_t           status; // Slave status
+    modbus_phy_t                        phy;
+
+    #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == 0)
+        modbus_register_t * holdingRegisters; // Pointer to the holding register table
+        uint16_t holdingRegistersCount; // Number of holding registers
+
+        modbus_register_t * inputRegisters;  // Pointer to the input register table
+        uint16_t inputRegistersCount; // Number of input registers
+
+        modbus_register_t * coils;           // Pointer to the coils table
+        uint16_t coilsCount; // Number of coils
+
+        modbus_register_t * discreteInputs;  // Pointer to the discrete inputs table
+        uint16_t discreteInputsCount; // Number of discrete inputs
+    #else
+        uint16_t holdingRegOffset; // Offset for holding registers
+        uint16_t inputRegOffset;   // Offset for input registers
+        uint16_t coilsOffset;      // Offset for coils
+        uint16_t discreteInpOffset; // Offset for discrete inputs
+    #endif
+} modbus_slave_info_t;
+
+typedef struct{
     // Modbus Port Configuration
     modbus_mode_t       mode;       // Mode of Modbus communication (Master, Slave, etc.)
     modbus_phy_t        phy;
@@ -222,6 +254,8 @@ typedef struct{
         mb_master_query_t           *queryTable;
         uint16_t                    queryTableLength;
         osMessageQueueId_t          queryQueueHandle;
+
+        modbus_slave_info_t *slave[MODBUS_MASTER_SLAVE_MAX_COUNT];
     #endif
 
     #if MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP
@@ -241,32 +275,6 @@ typedef struct{
     
 } modbus_port_t;
 
-typedef struct {
-
-    uint8_t         id; // Slave ID
-    uint8_t         status; // Slave status
-    modbus_phy_t    phy;
-
-    #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == 0)
-        modbus_register_t * holdingRegisters; // Pointer to the holding register table
-        uint16_t holdingRegistersCount; // Number of holding registers
-
-        modbus_register_t * inputRegisters;  // Pointer to the input register table
-        uint16_t inputRegistersCount; // Number of input registers
-
-        modbus_register_t * coils;           // Pointer to the coils table
-        uint16_t coilsCount; // Number of coils
-
-        modbus_register_t * discreteInputs;  // Pointer to the discrete inputs table
-        uint16_t discreteInputsCount; // Number of discrete inputs
-    #else
-        uint16_t holdingRegOffset; // Offset for holding registers
-        uint16_t inputRegOffset;   // Offset for input registers
-        uint16_t coilsOffset;      // Offset for coils
-        uint16_t discreteInpOffset; // Offset for discrete inputs
-    #endif
-} modbus_slave_info_t;
-
 typedef void (*modbusTxCallback_t)(const uint8_t *data, uint16_t size);
 
 
@@ -285,5 +293,7 @@ gsg_result_t MB_unregisterPhyTxCallback(modbus_phy_t phy);
 // Master mode API
 gsg_result_t MB_masterRegisterQuery(modbus_port_t *port, const mb_master_query_t *query);
 gsg_result_t MB_masterUnregisterQuery(modbus_port_t *port, const mb_master_query_t *query);
+gsg_result_t MB_masterRegisterSlave(modbus_port_t *port, modbus_slave_info_t * slave );
+
 
 #endif /* MODBUS_H_ */

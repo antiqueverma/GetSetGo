@@ -54,39 +54,34 @@ gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size)
 {
     if (port == NULL || data == NULL || size == 0)
         return GSG_INVALID_ARG;
+        
+    uint8_t phy = port->slave[data[0]]->phy;
+    if(modbusPhyTxCallbacks[phy] == NULL)
+    {
+//        DEBUG_LOGI(DEBUG_TAG_COMM,"MB", "Slave-TxCb == NULL, using port's default");
+        phy = port->phy;
+    }
 
     // Port will be in a valid state to send data, hence no need to validate state
     uint16_t newSize = size;
-
     newSize = mbPhyPreTx(port, data, size);
 
     // Call the registered callback for the physical layer
-    if (modbusPhyTxCallbacks[port->phy] != NULL)
+    osMutexAcquire(modbusPhyTxMutex[phy], osWaitForever);
+    modbusPhyTxCallbacks[phy](data, newSize);
+    osMutexRelease(modbusPhyTxMutex[phy]);
+
+    char hex[20];
+    if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG)
     {
-        osMutexAcquire(modbusPhyTxMutex[port->phy], osWaitForever);
-       modbusPhyTxCallbacks[port->phy](data, newSize);
-
-        char hex[20];
-
-        if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG)
+        sprintf(hex,"Tx[%d]> ",newSize);
+        DEBUG_LOGD(DEBUG_TAG_MODBUS,"MB",hex);
+        for(uint16_t i=0; i<newSize ; i++ )
         {
-            sprintf(hex,"Tx[%d]> ",newSize);
-            DEBUG_LOGD(DEBUG_TAG_MODBUS,"MB",hex);
-            for(uint16_t i=0; i<newSize ; i++ )
-            {
-                sprintf(hex,"%.2X  ",data[i]); 		DEBUG_LOG_RAW(hex);
-            }
+            sprintf(hex,"%.2X  ",data[i]); 		DEBUG_LOG_RAW(hex);
         }
-
-        osMutexRelease(modbusPhyTxMutex[port->phy]);
-        return GSG_SUCCESS;
     }
-    else
-    {
-        DEBUG_LOGE(DEBUG_TAG_COMM,"MB", "No Tx callback registered for phy");
-        return GSG_NOT_IMPLEMENTED; // No callback registered for this physical layer
-    }
-        
+    return GSG_SUCCESS;
 }
 
 static uint16_t mbPhyPreTx(modbus_port_t *port, uint8_t *data, uint16_t size)
