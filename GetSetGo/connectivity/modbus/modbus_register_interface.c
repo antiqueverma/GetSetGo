@@ -1,107 +1,338 @@
 
 #include "modbus.h"
 
-extern debugTagId_t 	debugTagId;
-extern char 			debugTag[];
+void mb_notifyRegisterAccess(uint16_t regAddress, mb_query_type_t queryType);
+modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress, uint8_t regCount, uint8_t *value);
+modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress, uint8_t regCount, uint8_t *value);
 
-static uint8_t mb_reg_table_write(modbus_register_t *reg, void *value)
+
+
+static inline void modbus_write_u16(uint8_t *dest, uint16_t value)
 {
-    if (reg == NULL || value == NULL) 
-    {
-        return 0; // Error: Null pointer
-    }
-
-    // Check if the register is writable
-    if (!(reg->flags & MB_REG_FLAG_WRITE))
-    {
-        return 0; // Error: Register is not writable
-    }
-
-    // Check if the value is within the allowed range
-    if (*(int16_t *)value < reg->min_value || *(int16_t *)value > reg->max_value)
-    {
-        return 0; // Error: Value out of range
-    }
-
-    switch (reg->data_type) 
-    {
-        case MB_REG_TYP_INT8:
-            *(int8_t *)reg->value = *(int8_t *)value;
-            break;
-        case MB_REG_TYP_INT16:
-            *(int16_t *)reg->value = *(int16_t *)value;
-            break;
-        case MB_REG_TYP_INT32:
-            *(int32_t *)reg->value = *(int32_t *)value;
-            break;
-        case MB_REG_TYP_STRING:
-        // For strings, we assume the max length is defined by reg->max_value
-            strncpy((char *)reg->value, (char *)value, reg->max_value);
-            break;
-        case MB_REG_TYP_PTR:
-            reg->value = value; // Pointer assignment
-            break;
-        default:
-            return 0; // Error: Unsupported data type
-    }
-
-    // If the register is persistent, save the value to EEPROM
-    if (reg->flags & MB_REG_FLAG_PERSISTENT)
-    {
-        ;// eeprom_write(reg->eeprom_address, reg->value, sizeof(reg->value));
-    }
-
-    // If the register has a notification flag, trigger a notification
-    if (reg->flags & MB_REG_FLAG_NOTIFY)
-    {
-        ;// mb_notify_register_change(reg);
-    }
-
-    return 1; // Success
+    dest[0] = (uint8_t)(value >> 8);   // High byte first
+    dest[1] = (uint8_t)(value & 0xFF); // Low byte next
 }
 
-static uint8_t mb_reg_table_read(modbus_port_t *port, uint8_t slaveId, void *value )
+static inline uint16_t modbus_read_u16(const uint8_t *src)
 {
-    if (port == NULL || value == NULL) 
-    {
-        return 0; // Error: Null pointer
-    }
-
-    // Check if the register is readable
-//    if (!(reg->flags & MB_REG_FLAG_READ))
-    {
-        return 0; // Error: Register is not readable
-    }
-
-    switch (reg->data_type) 
-    {
-        case MB_REG_TYP_INT8:
-            *(int8_t *)value = *(int8_t *)reg->value;
-            break;
-        case MB_REG_TYP_INT16:
-            *(int16_t *)value = *(int16_t *)reg->value;
-            break;
-        case MB_REG_TYP_INT32:
-            *(int32_t *)value = *(int32_t *)reg->value;
-            break;
-        case MB_REG_TYP_STRING:
-            strncpy((char *)value, (char *)reg->value, reg->max_value);
-            break;
-        case MB_REG_TYP_PTR:
-            value = reg->value; // Pointer assignment
-            break;
-        default:
-            return 0; // Error: Unsupported data type
-    }
-
-    // If the register has a notification flag, trigger a notification
-    if (reg->flags & MB_REG_FLAG_NOTIFY)
-    {
-        ;// mb_notify_register_change(reg);
-    }
-
-    return 1; // Success
+    return (uint16_t)((src[0] << 8) | src[1]);
 }
 
+static inline void modbus_write_u32(uint8_t *dest, uint32_t value)
+{
+    dest[0] = (uint8_t)(value >> 24);
+    dest[1] = (uint8_t)(value >> 16);
+    dest[2] = (uint8_t)(value >> 8);
+    dest[3] = (uint8_t)(value & 0xFF);
+}
+
+static inline uint32_t modbus_read_u32(const uint8_t *src)
+{
+    return ((uint32_t)src[0] << 24) |
+           ((uint32_t)src[1] << 16) |
+           ((uint32_t)src[2] << 8)  |
+           ((uint32_t)src[3]);
+}
+
+
+modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress, uint8_t regCount, uint8_t *value)
+{
+    if (slave == NULL || value == NULL)
+    {
+        return GSG_ERROR_NULL_POINTER;
+    }
+
+    modbus_register_t *table = NULL;
+    if(queryType == MB_QUERY_WRITE_HOLDING_REGISTERS)
+        table = slave->holdingRegisters;
+    else
+        return MB_ERROR_INVALID_ADDRESS;
+
+    modbus_error_t result = MB_ERROR_NONE;
+
+    uint8_t regToDo = 0;
+    for (regToDo = 0; regToDo < regCount; )
+    {
+        uint16_t baseIndex = regAddress + regToDo;   // << add this line
+        modbus_register_t *reg = &table[baseIndex];
+        regToDo++;  // For next iteration
+        
+        // Check if the register is writable
+        if(!reg->flags.write)
+        {
+            if( reg->data_type == MB_REG_TYP_UINT8  || reg->data_type == MB_REG_TYP_INT8 
+             || reg->data_type == MB_REG_TYP_UINT16 || reg->data_type == MB_REG_TYP_INT16
+             || reg->data_type == MB_REG_TYP_STRING)
+            {
+                value += sizeof(uint16_t);
+            }
+            else if (reg->data_type == MB_REG_TYP_UINT32 || reg->data_type == MB_REG_TYP_INT32)
+            {
+                value += sizeof(uint32_t);
+            }
+            continue;
+        }
+
+        switch (reg->data_type) 
+        {
+            case MB_REG_TYP_UINT8:
+            {
+                uint16_t raw = modbus_read_u16(value);
+                uint8_t newValue = (uint8_t)raw;
+                if(reg->flags.validate)
+                {
+                    // Validate the new value against min and max
+                    if (newValue < reg->min_value || newValue > reg->max_value)
+                    {
+                        result = MB_ERROR_INVALID_VALUE;
+                        continue;  // Move to the next register
+                    }
+                }
+                *(uint8_t *)reg->value = newValue;
+                value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
+                break;
+            }
+            case MB_REG_TYP_INT8:
+            {
+                uint16_t raw = modbus_read_u16(value);
+                int8_t newValue = (int8_t)raw;
+                if(reg->flags.validate)
+                {
+                    // Validate the new value against min and max
+                    if (newValue < reg->min_value || newValue > reg->max_value)
+                    {
+                        result = MB_ERROR_INVALID_VALUE;
+                        continue;  // Move to the next register
+                    }
+                }
+                *(int8_t *)reg->value = newValue;
+                value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
+                break;
+            }
+            case MB_REG_TYP_UINT16:
+            {
+                uint16_t newValue = modbus_read_u16(value);
+                if(reg->flags.validate)
+                {
+                    // Validate the new value against min and max
+                    if (newValue < reg->min_value || newValue > reg->max_value)
+                    {
+                        result = MB_ERROR_INVALID_VALUE;
+                        continue;  // Move to the next register
+                    }
+                }
+                *(uint16_t *)reg->value = newValue;
+                value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
+                break;
+            }
+            case MB_REG_TYP_INT16:
+            {
+                int16_t newValue = (int16_t)modbus_read_u16(value);
+                if(reg->flags.validate)
+                {
+                    // Validate the new value against min and max
+                    if (newValue < reg->min_value || newValue > reg->max_value)
+                    {
+                        result = MB_ERROR_INVALID_VALUE;
+                        continue;  // Move to the next register
+                    }
+                }
+                *(int16_t *)reg->value = newValue;
+                value += sizeof(int16_t); // Move buffer pointer by 2bytes for next register
+                break;
+            }
+            case MB_REG_TYP_UINT32:
+            {
+                uint32_t newValue = modbus_read_u32(value);
+                if(reg->flags.validate)
+                {
+                    // Validate the new value against min and max
+                    if (newValue < reg->min_value || newValue > reg->max_value)
+                    {
+                        result = MB_ERROR_INVALID_VALUE;
+                        continue;  // Move to the next register
+                    }
+                }
+                *(uint32_t *)reg->value = newValue;
+                value += sizeof(uint32_t); // Move buffer pointer by 4bytes for next register
+                regToDo++;      // 32bit variables occupy 2 registers
+                break;
+            }
+            case MB_REG_TYP_INT32:
+            {
+                int32_t newValue = (int32_t)modbus_read_u32(value);
+                if(reg->flags.validate) // Validate the new value against min and max
+                {
+                    if (newValue < reg->min_value || newValue > reg->max_value)
+                    {
+                        result = MB_ERROR_INVALID_VALUE;
+                        continue;  // Move to the next register
+                    }
+                }
+                *(int32_t *)reg->value = newValue;
+                value += sizeof(int32_t); // Move buffer pointer by 4bytes for next register
+                regToDo++;      // 32bit variables occupy 2 registers
+                break;
+            }
+            case MB_REG_TYP_STRING:
+            {
+                // Manually copy two bytes
+                *(uint8_t *)reg->value       = value[0];
+                *((uint8_t *)reg->value + 1) = value[1];
+                value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
+                break;
+            }
+            default:
+            {
+                DEBUG_LOGE(DEBUG_TAG_MODBUS,"MB","Unsupported data type");
+                value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
+                continue; // Unsupported data type
+            }
+        }
+
+        // If the register is persistent, save the value to EEPROM
+        if (reg->flags.persistent)
+        {
+            ;// eeprom_write(reg->eeprom_address, reg->value, sizeof(reg->value));
+        }
+
+        // If the register has a notification flag, trigger a notification
+        if (reg->flags.notify)
+        {
+            mb_notifyRegisterAccess(baseIndex, queryType);
+        }
+    }
+
+    return result; // Success
+}
+
+modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress, uint8_t regCount, uint8_t *value)
+{
+    if (slave == NULL || value == NULL) 
+    {
+        return GSG_ERROR_NULL_POINTER;
+    }
+    // DEBUG_LOGI(DEBUG_TAG_COMM,"MB", "#B");
+
+    modbus_register_t *table = NULL;
+    if(queryType == MB_QUERY_READ_HOLDING_REGISTERS || queryType == MB_QUERY_WRITE_HOLDING_REGISTERS)
+        table = slave->holdingRegisters;
+    else if(queryType == MB_QUERY_READ_INPUT_REGISTERS)
+        table = slave->inputRegisters;
+    else
+        return MB_ERROR_INVALID_ADDRESS;
+
+    if((table == NULL) || (regAddress + regCount > slave->holdingRegistersCount))
+    {
+        return MB_ERROR_INVALID_ADDRESS;
+    }
+
+    modbus_error_t result = MB_ERROR_NONE;
+    uint8_t regToDo = 0;
+
+    char hex[50];
+    // sprintf(hex, "Id=%d, Type=%d, Add=%d[%d]", slave->id, queryType, regAddress, regCount);
+    // DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
+
+    for (regToDo = 0; regToDo < regCount;)
+    {
+        uint16_t baseIndex = regAddress + regToDo;   // << add this line
+        modbus_register_t *reg = &table[baseIndex];
+        regToDo++;  // For next iteration
+        
+        // Check if the register is readable
+        if (!reg->flags.read)
+        {
+            if( reg->data_type == MB_REG_TYP_UINT8  || reg->data_type == MB_REG_TYP_INT8 
+             || reg->data_type == MB_REG_TYP_UINT16 || reg->data_type == MB_REG_TYP_INT16
+             || reg->data_type == MB_REG_TYP_STRING)
+            {
+                value += sizeof(uint16_t);
+            }
+            else if (reg->data_type == MB_REG_TYP_UINT32 || reg->data_type == MB_REG_TYP_INT32)
+            {
+                value += sizeof(uint32_t);
+            }
+            continue;
+        }
+
+        switch (reg->data_type)
+        {
+            case MB_REG_TYP_UINT8:
+            {
+                // 8bit variables also occupy 1 register
+                uint8_t val = *(uint8_t *)reg->value;
+                modbus_write_u16(value, val);
+                value += sizeof(uint16_t);
+                break;
+            }
+            case MB_REG_TYP_INT8:
+            {
+                int8_t val = *(int8_t *)reg->value;
+                modbus_write_u16(value, (uint16_t)val);
+                value += sizeof(uint16_t);
+                break;
+            }
+            case MB_REG_TYP_UINT16:
+            {   
+                // DEBUG_LOGI(DEBUG_TAG_COMM,"MB", "#C");
+                uint16_t val = *(uint16_t *)reg->value;
+                modbus_write_u16(value, val);
+                value += sizeof(uint16_t);
+                break;
+            }
+            case MB_REG_TYP_INT16:
+            {
+                int16_t val = *(int16_t *)reg->value;
+                modbus_write_u16(value, (uint16_t)val);
+                value += sizeof(uint16_t);
+                break;
+            }
+            case MB_REG_TYP_UINT32:
+            {
+                uint32_t val = *(uint32_t *)reg->value;
+                modbus_write_u32(value, val);
+                regToDo++;      // 32bit variables occupy 2 registers
+                value += sizeof(uint32_t);
+                break;
+            }
+            case MB_REG_TYP_INT32:
+            {
+                int32_t val = *(int32_t *)reg->value;
+                modbus_write_u32(value, (uint32_t)val);
+                regToDo++;      // 32bit variables occupy 2 registers
+                value += sizeof(uint32_t);
+                break;
+            }
+            case MB_REG_TYP_STRING:
+            {
+                // Manually copy two bytes
+                value[0] = *((uint8_t *)reg->value);
+                value[1] = *((uint8_t *)reg->value + 1);
+                value += sizeof(uint16_t); // Move pointer for next register
+                break;
+            }
+            default:
+            {
+                DEBUG_LOGE(DEBUG_TAG_MODBUS,"MB","Unsupported data type");
+                value += sizeof(uint16_t);
+                continue; // Unsupported data type
+            }
+        }
+
+        // If the register has a notification flag, trigger a notification
+        if (reg->flags.notify)
+        {
+            mb_notifyRegisterAccess(baseIndex, queryType);
+        }
+    }
+
+    return result; // Success
+}
+
+void mb_notifyRegisterAccess(uint16_t regAddress, mb_query_type_t queryType)
+{
+    ;
+}
 
 

@@ -14,16 +14,17 @@
 #define MODBUS_PORT_USE_HEAP                            DISABLED
 
 // Port Configurations
-#define MODBUS_PORT_MAX_COUNT                           5 // Maximum number of Modbus ports
+#define MODBUS_PORT_MAX_COUNT                           5   // Maximum number of Modbus ports
+#define MODBUS_INTER_BYTE_TIMEOUT                       10 // Max time after which a frame is considered complete (in ms)
 
 // Master mode configurations
 #define MODBUS_MASTER_MODE                              ENABLED
 #define MODBUS_MASTER_MAX_SLAVES                        10 // Maximum 255 slaves supported
 #define MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP          DISABLED
 #define MODBUS_MASTER_QUERY_LIST_LENGTH                 10 // Maximum number of queries that can be registered
-#define MODBUS_MASTER_QUERY_QUEUE_LENGTH                5 // Maximum number of queries that can wait to be processed
+#define MODBUS_MASTER_QUERY_QUEUE_LENGTH                10 // Maximum number of queries that can wait to be processed
 #define MODBUS_MASTER_SLAVE_MAX_COUNT                   10 // Maximum number of slaves supported
-
+#define MODBUS_MASTER_RESPONSE_TIMEOUT_MS               1000 // Response timeout in ms
 // Slave mode configurations
 #define MODBUS_SLAVE_MODE                               ENABLED
 
@@ -84,6 +85,7 @@ typedef enum {
 typedef enum{
     MB_ERROR_NONE = 0,
     MB_ERROR_INVALID_FRAME,
+    MB_ERROR_INVALID_SLAVE,
     MB_ERROR_TIMEOUT,
     MB_ERROR_CRC_MISMATCH,
     MB_ERROR_PORT_NOT_FOUND,
@@ -107,17 +109,19 @@ typedef enum{
 } modbus_func_code_t;
 
 // Modbus Register Flags
-typedef enum {
-    MB_REG_FLAG_SWAP_BYTES, // Swap bytes for 16-bit registers
-    MB_REG_FLAG_READ, 
-    MB_REG_FLAG_WRITE,
-    MB_REG_FLAG_NOTIFY,
-    MB_REG_FLAG_PERSISTENT, // Register value is stored in EEPROM
+typedef struct {
+    uint8_t swapBytes:1; // Swap bytes for 16-bit registers
+    uint8_t upperByte:1; // Upper byte for 16-bit registers
+    uint8_t read:1; 
+    uint8_t write:1;
+    uint8_t notify:1;
+    uint8_t persistent:1; // Register value is stored in EEPROM
+    uint8_t validate:1; // Validate the register value
+    uint8_t reserved:1;   // Reserved for future use
 } modbus_reg_flags_t;
 
 // Modbus Register Types
 typedef enum {
-    MB_REG_TYP_BOOL,  // Boolean value (1 bit)
     MB_REG_TYP_INT8,  //  8-bit integer
     MB_REG_TYP_UINT8, //  8-bit unsigned integer
     MB_REG_TYP_INT16, //  16-bit integer  
@@ -169,10 +173,10 @@ typedef enum{
 typedef struct {
     void               *value;          // Value of the register
     modbus_reg_type_t   data_type; // Data type of the register
-    uint16_t            min_value;      // Minimum value of the register
-    uint16_t            max_value;      // Maximum value of the register
+    int32_t            min_value;      // Minimum value of the register
+    int32_t            max_value;      // Maximum value of the register
     uint32_t            eeprom_address; // EEPROM address for persistent storage
-    uint16_t            flags;
+    modbus_reg_flags_t  flags; // Flags for the register
 } modbus_register_t;
 
 typedef struct{
@@ -199,6 +203,13 @@ typedef struct{
     uint8_t connected:1;
     uint8_t reserved:7;
 } modbus_slave_info_flags_t;
+
+typedef struct {
+    uint8_t rxBuffer[512];
+    uint32_t lastRxByteTime; // Last time a byte was received
+    uint16_t byteCtr; // Number of bytes received
+    osMessageQueueId_t rxQueueHandle;
+} mbPhyRxCbContext_t;
 
 typedef struct {
 
@@ -238,10 +249,10 @@ typedef struct{
         uint8_t * rx_buffer; // Pointer to the receive buffer
         uint8_t * tx_buffer; // Pointer to the transmit buffer       
     #else
-        uint8_t  rx_buffer[MODBUS_PORT_RX_BUFFER_SIZE]; // Static receive buffer
         uint8_t  tx_buffer[MODBUS_PORT_TX_BUFFER_SIZE]; // Static transmit buffer
-        uint16_t rx_buffer_length; // Length of the receive buffer
         uint16_t tx_buffer_length; // Length of the transmit buffer
+        // uint8_t  rx_buffer[MODBUS_PORT_RX_BUFFER_SIZE]; // we use ctx objects now
+        // uint16_t rx_buffer_length; // Length of the receive buffer   // we use ctx objects now
     #endif
 
     // OS Thread Management
@@ -254,7 +265,7 @@ typedef struct{
         mb_master_query_t           *queryTable;
         uint16_t                    queryTableLength;
         osMessageQueueId_t          queryQueueHandle;
-
+        mbPhyRxCbContext_t          *rxCtx[_MODBUS_PHY_MAX];
         modbus_slave_info_t *slave[MODBUS_MASTER_SLAVE_MAX_COUNT];
     #endif
 
@@ -278,6 +289,7 @@ typedef struct{
 typedef void (*modbusTxCallback_t)(const uint8_t *data, uint16_t size);
 
 
+
 /**************************************************************************************************************
  *                                          Modbus Library API
  **************************************************************************************************************/
@@ -289,6 +301,12 @@ gsg_result_t MB_destroyPort(modbus_port_t * port);
 // Physical layer config API
 gsg_result_t MB_registerPhyTxCallback(modbus_phy_t phy, modbusTxCallback_t cb);
 gsg_result_t MB_unregisterPhyTxCallback(modbus_phy_t phy);
+void MB_phyRxByteISRCallback(modbus_phy_t phy, uint8_t byte);
+gsg_result_t MB_registerPhyRxContext(modbus_phy_t phy, modbus_port_t *port, mbPhyRxCbContext_t *context);
+gsg_result_t MB_unregisterPhyRxContext(modbus_phy_t phy, modbus_port_t *port);
+
+
+
 
 // Master mode API
 gsg_result_t MB_masterRegisterQuery(modbus_port_t *port, const mb_master_query_t *query);
