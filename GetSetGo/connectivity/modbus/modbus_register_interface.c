@@ -35,9 +35,9 @@ static inline uint32_t modbus_read_u32(const uint8_t *src)
 }
 
 
-modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress, uint8_t regCount, uint8_t *value)
+modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress, uint8_t regCount, uint8_t *frame)
 {
-    if (slave == NULL || value == NULL)
+    if (slave == NULL || frame == NULL)
     {
         return GSG_ERROR_NULL_POINTER;
     }
@@ -54,13 +54,13 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
 
 
 //    char hex[50];
-//    sprintf(hex, "RegW:Id=%d, T=%d, A=%d[%d]", slave->id, queryType, regAddress, regCount);
-//    DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
-//
+//    sprintf(hex, "RegW:Id=%d, T=%d, A=%d[%d]", slave->id, queryType, regAddress, regCount);DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
+
+//    DEBUG_LOGD(DEBUG_TAG_COMM,"MB", "Rx>");
 //    for(uint8_t i=0 ; i<regCount*2 ; i++ )
 //    {
-//    	sprintf(hex, "[%d]",value[i]);
-//    	DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
+// 		sprintf(hex, "   [%d]",frame[i]);
+// 		DEBUG_LOG_RAW(hex);
 //    }
 
 
@@ -78,11 +78,11 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
              || reg->data_type == MB_REG_TYP_UINT16 || reg->data_type == MB_REG_TYP_INT16
              || reg->data_type == MB_REG_TYP_STRING)
             {
-                value += sizeof(uint16_t);
+                frame += sizeof(uint16_t);
             }
             else if (reg->data_type == MB_REG_TYP_UINT32 || reg->data_type == MB_REG_TYP_INT32)
             {
-                value += sizeof(uint32_t);
+                frame += sizeof(uint32_t);
                 regToDo++;
             }
             continue;
@@ -90,9 +90,40 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
 
         switch (reg->data_type) 
         {
+            case MB_REG_TYP_BOOL:   // set the flag
+            {
+                // For boolean registers, we expect a Upper byte of 16bit register to contain a number representing the bit status
+                // and the lower byte of the 16bit register represents the bit location
+                uint8_t bitLocation = frame[1];
+                uint8_t bitStatus = frame[0] ? 1 : 0;
+
+                // sprintf(hex, "bool=%d[%d]",bitLocation,bitStatus);   DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
+
+                if (reg->max_value == 8) // 8-bit register
+                {
+                    if (bitLocation > 7)
+                        bitLocation = 7;
+                    if (bitStatus)
+                        *(uint8_t *)reg->value |= (1 << bitLocation);
+                    else
+                        *(uint8_t *)reg->value &= ~(1 << bitLocation);
+                }
+                else  if (reg->max_value == 16) // 16-bit register
+                {
+                    if (bitLocation > 15)
+                        bitLocation = 15;
+                    if (bitStatus)
+                        *(uint16_t *)reg->value |= (1 << bitLocation);
+                    else
+                        *(uint16_t *)reg->value &= ~(1 << bitLocation);
+                }
+
+                frame += sizeof(uint16_t);
+                break;
+            }
             case MB_REG_TYP_UINT8:
             {
-                uint16_t raw = modbus_read_u16(value);
+                uint16_t raw = modbus_read_u16(frame);
                 uint8_t newValue = (uint8_t)raw;
                 if(reg->flags.validate)
                 {
@@ -104,12 +135,12 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
                     }
                 }
                 *(uint8_t *)reg->value = newValue;
-                value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
+                frame += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
                 break;
             }
             case MB_REG_TYP_INT8:
             {
-                uint16_t raw = modbus_read_u16(value);
+                uint16_t raw = modbus_read_u16(frame);
                 int8_t newValue = (int8_t)raw;
                 if(reg->flags.validate)
                 {
@@ -121,12 +152,12 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
                     }
                 }
                 *(int8_t *)reg->value = newValue;
-                value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
+                frame += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
                 break;
             }
             case MB_REG_TYP_UINT16:
             {
-                uint16_t newValue = modbus_read_u16(value);
+                uint16_t newValue = modbus_read_u16(frame);
                 if(reg->flags.validate)
                 {
                     // Validate the new value against min and max
@@ -141,12 +172,12 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
 //                sprintf(hex, "#U16=%d,%d", *(uint16_t *)reg->value, newValue);
 //                DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
 
-                value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
+                frame += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
                 break;
             }
             case MB_REG_TYP_INT16:
             {
-                int16_t newValue = (int16_t)modbus_read_u16(value);
+                int16_t newValue = (int16_t)modbus_read_u16(frame);
                 if(reg->flags.validate)
                 {
                     // Validate the new value against min and max
@@ -157,12 +188,12 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
                     }
                 }
                 *(int16_t *)reg->value = newValue;
-                value += sizeof(int16_t); // Move buffer pointer by 2bytes for next register
+                frame += sizeof(int16_t); // Move buffer pointer by 2bytes for next register
                 break;
             }
             case MB_REG_TYP_UINT32:
             {
-                uint32_t newValue = modbus_read_u32(value);
+                uint32_t newValue = modbus_read_u32(frame);
                 if(reg->flags.validate)
                 {
                     // Validate the new value against min and max
@@ -173,13 +204,13 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
                     }
                 }
                 *(uint32_t *)reg->value = newValue;
-                value += sizeof(uint32_t); // Move buffer pointer by 4bytes for next register
+                frame += sizeof(uint32_t); // Move buffer pointer by 4bytes for next register
                 regToDo++;      // 32bit variables occupy 2 registers
                 break;
             }
             case MB_REG_TYP_INT32:
             {
-                int32_t newValue = (int32_t)modbus_read_u32(value);
+                int32_t newValue = (int32_t)modbus_read_u32(frame);
                 if(reg->flags.validate) // Validate the new value against min and max
                 {
                     if (newValue < reg->min_value || newValue > reg->max_value)
@@ -189,22 +220,22 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
                     }
                 }
                 *(int32_t *)reg->value = newValue;
-                value += sizeof(int32_t); // Move buffer pointer by 4bytes for next register
+                frame += sizeof(int32_t); // Move buffer pointer by 4bytes for next register
                 regToDo++;      // 32bit variables occupy 2 registers
                 break;
             }
             case MB_REG_TYP_STRING:
             {
                 // Manually copy two bytes
-                *(uint8_t *)reg->value       = value[0];
-                *((uint8_t *)reg->value + 1) = value[1];
-                value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
+                *(uint8_t *)reg->value       = frame[0];
+                *((uint8_t *)reg->value + 1) = frame[1];
+                frame += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
                 break;
             }
             default:
             {
                 DEBUG_LOGE(DEBUG_TAG_MODBUS,"MB","Unsupported data type");
-                value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
+                frame += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
                 continue; // Unsupported data type
             }
         }
@@ -225,9 +256,9 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
     return result; // Success
 }
 
-modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress, uint8_t regCount, uint8_t *value)
+modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress, uint8_t regCount, uint8_t *frame)
 {
-    if (slave == NULL || value == NULL) 
+    if (slave == NULL || frame == NULL) 
     {
         return GSG_ERROR_NULL_POINTER;
     }
@@ -266,75 +297,90 @@ modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType,
              || reg->data_type == MB_REG_TYP_UINT16 || reg->data_type == MB_REG_TYP_INT16
              || reg->data_type == MB_REG_TYP_STRING)
             {
-                value += sizeof(uint16_t);
+                frame += sizeof(uint16_t);
             }
             else if (reg->data_type == MB_REG_TYP_UINT32 || reg->data_type == MB_REG_TYP_INT32)
             {
-                value += sizeof(uint32_t);
+                frame += sizeof(uint32_t);
             }
             continue;
         }
 
         switch (reg->data_type)
         {
+            case MB_REG_TYP_BOOL:  // Giving all flags as a 16-bit value
+            {
+                if(reg->max_value == 8)
+                {
+                    uint8_t val = *(uint8_t *)reg->value;
+                    modbus_write_u16(frame, (uint16_t)val);
+                }
+                else if (reg->max_value == 16)
+                {
+                    uint16_t val = *(uint16_t *)reg->value;
+                    modbus_write_u16(frame, val);
+                }
+                frame += sizeof(uint16_t);
+                break;
+            }
             case MB_REG_TYP_UINT8:
             {
                 // 8bit variables also occupy 1 register
                 uint8_t val = *(uint8_t *)reg->value;
-                modbus_write_u16(value, val);
-                value += sizeof(uint16_t);
+                modbus_write_u16(frame, val);
+                frame += sizeof(uint16_t);
                 break;
             }
             case MB_REG_TYP_INT8:
             {
                 int8_t val = *(int8_t *)reg->value;
-                modbus_write_u16(value, (uint16_t)val);
-                value += sizeof(uint16_t);
+                modbus_write_u16(frame, (uint16_t)val);
+                frame += sizeof(uint16_t);
                 break;
             }
             case MB_REG_TYP_UINT16:
             {   
                 // DEBUG_LOGI(DEBUG_TAG_COMM,"MB", "#C");
                 uint16_t val = *(uint16_t *)reg->value;
-                modbus_write_u16(value, val);
-                value += sizeof(uint16_t);
+                modbus_write_u16(frame, val);
+                frame += sizeof(uint16_t);
                 break;
             }
             case MB_REG_TYP_INT16:
             {
                 int16_t val = *(int16_t *)reg->value;
-                modbus_write_u16(value, (uint16_t)val);
-                value += sizeof(uint16_t);
+                modbus_write_u16(frame, (uint16_t)val);
+                frame += sizeof(uint16_t);
                 break;
             }
             case MB_REG_TYP_UINT32:
             {
                 uint32_t val = *(uint32_t *)reg->value;
-                modbus_write_u32(value, val);
+                modbus_write_u32(frame, val);
                 regToDo++;      // 32bit variables occupy 2 registers
-                value += sizeof(uint32_t);
+                frame += sizeof(uint32_t);
                 break;
             }
             case MB_REG_TYP_INT32:
             {
                 int32_t val = *(int32_t *)reg->value;
-                modbus_write_u32(value, (uint32_t)val);
+                modbus_write_u32(frame, (uint32_t)val);
                 regToDo++;      // 32bit variables occupy 2 registers
-                value += sizeof(uint32_t);
+                frame += sizeof(uint32_t);
                 break;
             }
             case MB_REG_TYP_STRING:
             {
                 // Manually copy two bytes
-                value[0] = *((uint8_t *)reg->value);
-                value[1] = *((uint8_t *)reg->value + 1);
-                value += sizeof(uint16_t); // Move pointer for next register
+                frame[0] = *((uint8_t *)reg->value);
+                frame[1] = *((uint8_t *)reg->value + 1);
+                frame += sizeof(uint16_t); // Move pointer for next register
                 break;
             }
             default:
             {
                 DEBUG_LOGE(DEBUG_TAG_MODBUS,"MB","Unsupported data type");
-                value += sizeof(uint16_t);
+                frame += sizeof(uint16_t);
                 continue; // Unsupported data type
             }
         }
@@ -353,5 +399,6 @@ void mb_notifyRegisterAccess(uint16_t regAddress, mb_query_type_t queryType)
 {
     ;
 }
+
 
 

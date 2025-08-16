@@ -26,6 +26,8 @@ typedef enum {
 	DEBUG_TAG_RANDOM = 0,
    
    DEBUG_TAG_APP ,
+   DEBUG_TAG_BSP ,
+   DEBUG_TAG_MSP ,
    DEBUG_TAG_COMM ,
    DEBUG_TAG_SENSOR,
    DEBUG_TAG_SD ,
@@ -64,16 +66,18 @@ typedef enum {
 
    #define DEBUG_LOG_RAW(msg) \
       if (DEBUG_LogLevelGet() >= 0) { debugLogRaw(msg); }
-   #define DEBUG_ASSERT(condition)                                                                 \
-      do {                                                                                         \
-         if (!(condition)) {                                                                       \
+   #define DEBUG_ASSERT(condition)                                                                 	\
+      do {                                                                                         	\
+         if (!(condition)) {                                                                       	\
                char assertStr[100];                                                                 \
-               sprintf(assertStr, "Assert Failed in %s at line %d", __FILE__, __LINE__);           \
-               debugLogRaw("**********************************************************");          \
-               debugLogRaw(assertStr);                                                             \
-               debugLogRaw("**********************************************************");          \
-               osThreadExit();                                                                     \
-         }                                                                                         \
+               debugLogRaw("**********************************************************");          	\
+               sprintf(assertStr, "Assert Failed in %s", __FILE__);           						\
+               debugLogRaw(assertStr);                                                             	\
+               sprintf(assertStr, "at line %d",__LINE__);           								\
+               debugLogRaw(assertStr);                                                             	\
+               debugLogRaw("**********************************************************");          	\
+               osThreadExit();                                                                     	\
+         }                                                                                         	\
       } while (0)
     
 #else

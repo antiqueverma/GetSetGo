@@ -124,6 +124,7 @@ typedef struct {
 
 // Modbus Register Types
 typedef enum {
+    MB_REG_TYP_BOOL,  //  8-bit boolean
     MB_REG_TYP_INT8,  //  8-bit integer
     MB_REG_TYP_UINT8, //  8-bit unsigned integer
     MB_REG_TYP_INT16, //  16-bit integer  

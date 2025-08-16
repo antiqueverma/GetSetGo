@@ -33,7 +33,7 @@ void DEBUG_Init( void )
    debugLevelMax = DEBUG_LEVEL_VERBOSE;
    debugTagMask = UINT64_MAX;
    debugTaskHandle = osThreadNew(debugTask, NULL, &debugTask_attributes);
-   osDelay(5);
+   
 }
 void DEBUG_Log_Switch(debugTagId_t tag, bool enable)
 {
