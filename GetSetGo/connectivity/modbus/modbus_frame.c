@@ -119,14 +119,27 @@ void mbTxGenFrame(modbus_port_t *port, mb_query_type_t queryType, uint8_t slaveI
     port->tx_buffer_length = frame_length;
 }
 
-modbus_error_t mbRxFrameParse(modbus_port_t *port, modbus_func_code_t funcCode, uint8_t slaveId, uint16_t address, uint16_t regCount, uint8_t *frame, uint16_t length)
+modbus_error_t mbRxFrameParse(modbus_port_t *port, uint8_t slaveId, modbus_func_code_t funcCode, uint16_t address, uint16_t regCount)
 {
-    if (port == NULL || frame == NULL || length < 5)
-        return MB_ERROR_INVALID_FRAME; // Invalid parameters
-
+    DEBUG_ASSERT(port != NULL);
+        
+    uint16_t length = port->rx_buffer_length;
     // Check the frame length
-    if (length < 5 + 2) // Minimum length for Modbus frame + CRC
+    if((length < 5) || (length > MODBUS_FRAME_MAX_LENGTH))
         return MB_ERROR_INVALID_FRAME;
+
+    // char hex[20];
+	// if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG)
+	// {
+	// 	sprintf(hex,"Rx[%d]> ",length);
+	// 	DEBUG_LOGD(DEBUG_TAG_MODBUS,"MB",hex);
+	// 	for(uint16_t i=0; i<length ; i++ )
+
+	// 	{
+	// 		sprintf(hex,"%.2X  ",frame[i]); 		DEBUG_LOG_RAW(hex);
+	// 	}
+	// }
+    uint8_t *frame = port->rx_buffer;  // A valid buffer as it comes from port struct
 
     // Check the CRC
     uint16_t crc = mbframeCalculateCRC16(frame, length - 2);
@@ -165,12 +178,18 @@ modbus_error_t mbRxFrameParse(modbus_port_t *port, modbus_func_code_t funcCode, 
             break;
         case MB_FUNC_READ_HOLDING_REGISTERS:
         {
-            DEBUG_LOGI(DEBUG_TAG_MODBUS, "MB", "Read Holding Registers NYI");
+            // DEBUG_LOGI(DEBUG_TAG_MODBUS, "MB", "Read Holding Registers ");
+            mb_regWrite(slave, 
+                MB_QUERY_READ_HOLDING_REGISTERS,
+                address, 
+                regCount, 
+                &frame[3]);
             break;
         }
         case MB_FUNC_WRITE_SINGLE_REGISTER:
         case MB_FUNC_WRITE_MULTIPLE_REGISTERS:
-        {
+        {   
+            // DEBUG_LOGI(DEBUG_TAG_MODBUS, "MB", "Write Holding Registers ");
             // Handle write register response
             break;
         }

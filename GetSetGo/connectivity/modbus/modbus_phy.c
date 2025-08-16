@@ -73,17 +73,17 @@ gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size)
     modbusPhyTxCallbacks[phy](data, size);
     osMutexRelease(modbusPhyTxMutex[phy]);
 
-    char hex[20];
-    if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG)
-    {
-        sprintf(hex,"Tx[%d]> ",size);
-        DEBUG_LOGD(DEBUG_TAG_MODBUS,"MB",hex);
-        for(uint16_t i=0; i<size ; i++ )
-
-        {
-            sprintf(hex,"%.2X  ",data[i]); 		DEBUG_LOG_RAW(hex);
-        }
-    }
+//    char hex[20];
+//    if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG)
+//    {
+//        sprintf(hex,"Tx[%d]> ",size);
+//        DEBUG_LOGD(DEBUG_TAG_MODBUS,"MB",hex);
+//        for(uint16_t i=0; i<size ; i++ )
+//
+//        {
+//            sprintf(hex,"%.2X  ",data[i]); 		DEBUG_LOG_RAW(hex);
+//        }
+//    }
     return GSG_SUCCESS;
 }
 
@@ -153,28 +153,13 @@ void MB_phyRxByteISRCallback(modbus_phy_t phy, uint8_t byte)
     if (ctx->rxQueueHandle == NULL)
         return;
 
-    uint32_t time = osKernelGetTickCount();
+//    ctx->lastRxByteTime = osKernelGetTickCount();
 
-    // Check for inter-byte timeout FIRST
-    if ((time - ctx->lastRxByteTime) > MODBUS_INTER_BYTE_TIMEOUT && ctx->byteCtr > 0)
-    {
-        uint16_t frameLen = ctx->byteCtr;
-        osMessageQueuePut(ctx->rxQueueHandle, &frameLen, 0, 0); // ISR-safe in CMSIS v2
-        ctx->byteCtr = 0;
-    }
-
-    // Append byte with overflow protection
-    if (ctx->byteCtr < sizeof(ctx->rxBuffer))
-    {
-        ctx->rxBuffer[ctx->byteCtr++] = byte;
-    }
-    else
+    // Directly push the byte data into queue
+    if(osMessageQueuePut(ctx->rxQueueHandle, &byte, 0, 0) != osOK)
     {
         DEBUG_LOGE(DEBUG_TAG_MODBUS, "MB", "Rx buffer overflow");
-        ctx->byteCtr = 0; // Reset to recover
     }
-
-    ctx->lastRxByteTime = time;
 }
 
 gsg_result_t MB_registerPhyRxContext(modbus_phy_t phy, modbus_port_t *port, mbPhyRxCbContext_t *context)
@@ -186,14 +171,15 @@ gsg_result_t MB_registerPhyRxContext(modbus_phy_t phy, modbus_port_t *port, mbPh
     mbPhyRxCbContext[phy] = context;
 
     // Initialize the Rx queue for this phy channel
-    context->rxQueueHandle = osMessageQueueNew(1, sizeof(uint16_t), NULL);
+    context->rxQueueHandle = osMessageQueueNew(MODBUS_PORT_RX_BUFFER_SIZE, sizeof(uint8_t), NULL);
     if (context->rxQueueHandle == NULL)
         return GSG_ERROR; // Failed to create message queue
 
-    // Initialize the Rx buffer and counters
-    memset(context->rxBuffer, 0, sizeof(context->rxBuffer));
     context->lastRxByteTime = 0;
-    context->byteCtr = 0;
+
+    // Initialize the Rx buffer and counters
+    // memset(context->rxBuffer, 0, sizeof(context->rxBuffer));
+    // context->byteCtr = 0;
 
     // Associate the Rx context with the Modbus port
     port->rxCtx[phy] = context;

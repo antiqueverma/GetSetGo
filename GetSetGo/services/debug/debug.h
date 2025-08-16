@@ -24,15 +24,16 @@ typedef enum {
 
 typedef enum {
 	DEBUG_TAG_RANDOM = 0,
+   
    DEBUG_TAG_APP ,
    DEBUG_TAG_COMM ,
    DEBUG_TAG_SENSOR,
    DEBUG_TAG_SD ,
    DEBUG_TAG_UI ,
 
-
    // GSG MODULES
    DEBUG_TAG_MODBUS,
+   DEBUG_TAG_ASSERT,
    _DEBUG_TAG_MAX
 } debugTagId_t;
 
@@ -63,13 +64,17 @@ typedef enum {
 
    #define DEBUG_LOG_RAW(msg) \
       if (DEBUG_LogLevelGet() >= 0) { debugLogRaw(msg); }
-   #define DEBUG_ASSERT(condition)                                      \
-      do {                                                             \
-         if (!(condition)) {                                          \
-               debugLog(0, 'A', __FILE__, "ASSERT");           \
-         }                                                            \
+   #define DEBUG_ASSERT(condition)                                                                 \
+      do {                                                                                         \
+         if (!(condition)) {                                                                       \
+               char assertStr[100];                                                                 \
+               sprintf(assertStr, "Assert Failed in %s at line %d", __FILE__, __LINE__);           \
+               debugLogRaw("**********************************************************");          \
+               debugLogRaw(assertStr);                                                             \
+               debugLogRaw("**********************************************************");          \
+               osThreadExit();                                                                     \
+         }                                                                                         \
       } while (0)
-    // osKernelLock();
     
 #else
    // In release builds: compile to a clean semicolon

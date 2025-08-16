@@ -16,7 +16,7 @@
 // Port Configurations
 #define MODBUS_PORT_MAX_COUNT                           5   // Maximum number of Modbus ports
 #define MODBUS_INTER_BYTE_TIMEOUT                       10 // Max time after which a frame is considered complete (in ms)
-
+#define MODBUS_FRAME_MAX_LENGTH                         256 // Maximum Modbus frame length
 // Master mode configurations
 #define MODBUS_MASTER_MODE                              ENABLED
 #define MODBUS_MASTER_MAX_SLAVES                        10 // Maximum 255 slaves supported
@@ -25,6 +25,8 @@
 #define MODBUS_MASTER_QUERY_QUEUE_LENGTH                10 // Maximum number of queries that can wait to be processed
 #define MODBUS_MASTER_SLAVE_MAX_COUNT                   10 // Maximum number of slaves supported
 #define MODBUS_MASTER_RESPONSE_TIMEOUT_MS               1000 // Response timeout in ms
+#define MODBUS_MASTER_INTER_BYTE_TIMEOUT_MS             10 // Response timeout in ms
+
 // Slave mode configurations
 #define MODBUS_SLAVE_MODE                               ENABLED
 
@@ -205,10 +207,10 @@ typedef struct{
 } modbus_slave_info_flags_t;
 
 typedef struct {
-    uint8_t rxBuffer[512];
     uint32_t lastRxByteTime; // Last time a byte was received
-    uint16_t byteCtr; // Number of bytes received
     osMessageQueueId_t rxQueueHandle;
+    // uint8_t rxBuffer[512];
+    // uint16_t byteCtr; // Number of bytes received
 } mbPhyRxCbContext_t;
 
 typedef struct {
@@ -251,8 +253,8 @@ typedef struct{
     #else
         uint8_t  tx_buffer[MODBUS_PORT_TX_BUFFER_SIZE]; // Static transmit buffer
         uint16_t tx_buffer_length; // Length of the transmit buffer
-        // uint8_t  rx_buffer[MODBUS_PORT_RX_BUFFER_SIZE]; // we use ctx objects now
-        // uint16_t rx_buffer_length; // Length of the receive buffer   // we use ctx objects now
+        uint8_t  rx_buffer[MODBUS_PORT_RX_BUFFER_SIZE]; // we use ctx objects now
+        uint16_t rx_buffer_length; // Length of the receive buffer   // we use ctx objects now
     #endif
 
     // OS Thread Management

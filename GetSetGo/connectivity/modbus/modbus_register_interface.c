@@ -43,12 +43,26 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
     }
 
     modbus_register_t *table = NULL;
-    if(queryType == MB_QUERY_WRITE_HOLDING_REGISTERS)
+    if(queryType == MB_QUERY_READ_HOLDING_REGISTERS || queryType == MB_QUERY_WRITE_HOLDING_REGISTERS)
         table = slave->holdingRegisters;
+    else if(queryType == MB_QUERY_READ_INPUT_REGISTERS)
+        table = slave->inputRegisters;
     else
         return MB_ERROR_INVALID_ADDRESS;
 
     modbus_error_t result = MB_ERROR_NONE;
+
+
+//    char hex[50];
+//    sprintf(hex, "RegW:Id=%d, T=%d, A=%d[%d]", slave->id, queryType, regAddress, regCount);
+//    DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
+//
+//    for(uint8_t i=0 ; i<regCount*2 ; i++ )
+//    {
+//    	sprintf(hex, "[%d]",value[i]);
+//    	DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
+//    }
+
 
     uint8_t regToDo = 0;
     for (regToDo = 0; regToDo < regCount; )
@@ -69,6 +83,7 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
             else if (reg->data_type == MB_REG_TYP_UINT32 || reg->data_type == MB_REG_TYP_INT32)
             {
                 value += sizeof(uint32_t);
+                regToDo++;
             }
             continue;
         }
@@ -122,6 +137,10 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
                     }
                 }
                 *(uint16_t *)reg->value = newValue;
+
+//                sprintf(hex, "#U16=%d,%d", *(uint16_t *)reg->value, newValue);
+//                DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
+
                 value += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
                 break;
             }
@@ -230,7 +249,7 @@ modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType,
     modbus_error_t result = MB_ERROR_NONE;
     uint8_t regToDo = 0;
 
-    char hex[50];
+    // char hex[50];
     // sprintf(hex, "Id=%d, Type=%d, Add=%d[%d]", slave->id, queryType, regAddress, regCount);
     // DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
 
