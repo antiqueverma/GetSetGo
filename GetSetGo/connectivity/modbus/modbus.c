@@ -7,192 +7,15 @@ char 			debugTag[] = "MB";
 static uint8_t portCount = 0; // Counter for the number of ports
 
 // Private function prototypes
-static void modbusTaskHandler(void *pvParameters);
 void mbMasterPushQueryTimerCallback(void *arg);
 void mbMasterQueryTimerHandler(void *arg);
-void mbTxGenFrame(modbus_port_t *port, mb_query_type_t queryType, uint8_t slaveId, uint16_t address, uint16_t regCount);
-modbus_error_t mbRxFrameParse(modbus_port_t *port, uint8_t slaveId, modbus_func_code_t funcCode, uint16_t address, uint16_t regCount);
-gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size);
-gsg_result_t mbPhyPreRx(modbus_port_t *port, uint8_t *data, uint16_t size);
-modbus_slave_info_t *mbGetSlaveInfo(modbus_port_t *port, uint8_t slaveId);
 
-modbus_slave_info_t *mbGetSlaveInfo(modbus_port_t *port, uint8_t slaveId)
-{
-    for (uint8_t i = 0; i < MODBUS_MASTER_MAX_SLAVES; i++)
-    {
-        if (port->slave[i]->id == slaveId)
-        {
-            return port->slave[i];
-        }
-    }
-    return NULL;
-}
+void modbusMasterTaskHandler(void * argument);
+void modbusSlaveTaskHandler(void * argument);
 
-static void modbusTaskHandler(void * argument)
-{
-    // typecast the port parameter to modbus_port_t pointer
-    modbus_port_t *modbusPort = (modbus_port_t *)argument;
-    char tempBuffer[64]; // Temporary buffer for debug messages
-    mb_master_query_t   queryInProcess;
-    modbus_slave_info_t *slaveInProcess = NULL;
-    modbusPort->state = MB_PORT_STATE_MASTER_IDLE; // Set initial state to disabled
-    mbPhyRxCbContext_t *ctx = NULL;
-    // Dummy query for testing
-    // mb_master_query_t query;
-    // query.address = 0;
-    // query.regCount = 5;
-    // query.type = MB_QUERY_READ_HOLDING_REGISTERS;
-    // query.periodicity = MB_MASTER_QUERY_PERIOD_1_S;
-    // query.slaveId = 1;
-    // memcpy(&modbusPort->currentQuery, &query, sizeof(mb_master_query_t));
-
-    // Modbus task implementation
-    while (1)
-    {
-        static uint8_t prvState = 0xFF;
-        if(modbusPort->state != prvState)
-        {
-            prvState = modbusPort->state; // Update previous state
-//             sprintf(tempBuffer,"State: %d", modbusPort->state);
-//             DEBUG_LOGI(DEBUG_TAG_MODBUS,"MB",tempBuffer);
-        }
-
-        // Modbus port state machine
-        switch (modbusPort->state)
-        {
-            // Master Mode States
-            case MB_PORT_STATE_MASTER_IDLE:
-            {
-                mb_master_query_t *queryPtr = NULL; // Temporary pointer to receive from queue
-
-                // Wait up to 500ms for a query to be available in the queue
-                if (osMessageQueueGet(modbusPort->queryQueueHandle,
-                                    &queryPtr,
-                                    NULL,
-                                    500) == osOK)  // Timeout in ms
-                {
-                    // Copy the struct data from the queued pointer to local variable
-                    if(queryPtr != NULL)
-                    {
-                        queryInProcess = *queryPtr;
-                        // Check if slave is registered
-                        slaveInProcess = mbGetSlaveInfo(modbusPort, queryInProcess.slaveId);
-                        if (slaveInProcess == NULL)  // Slave not found,
-                        {
-                            DEBUG_LOGE(DEBUG_TAG_MODBUS,"MB", "Unknown Slave in query");
-                            modbusPort->state = MB_PORT_STATE_MASTER_RESET;
-                            break;
-                        }
-                        else 
-                        {
-                            ;
-                        }
-                        // Move to next state
-                        modbusPort->state = MB_PORT_STATE_MASTER_TX_PROCESSING;
-                    }
-                }
-                else
-                {
-                    // No query in queue within 500ms, remain idle
-                }   
-                break;
-            }
-            case MB_PORT_STATE_MASTER_TX_PROCESSING:
-            {
-            	modbus_phy_t phy = slaveInProcess->phy;
-				ctx = modbusPort->rxCtx[phy];
-				if (ctx == NULL || ctx->rxQueueHandle == NULL)
-				{
-					DEBUG_LOGE(DEBUG_TAG_MODBUS, "MB", "No valid Rx context");
-					modbusPort->state = MB_PORT_STATE_MASTER_RESET;
-					break;
-				}
-				osMessageQueueReset (ctx->rxQueueHandle);
-				modbusPort->rx_buffer_length = 0;
-
-                mbTxGenFrame(modbusPort,
-                                queryInProcess.type,
-                                queryInProcess.slaveId,
-                                queryInProcess.address,
-                                queryInProcess.regCount);
-
-                modbusPort->state = MB_PORT_STATE_MASTER_TRANSMITTING;
-                break;
-            }
-            case MB_PORT_STATE_MASTER_TRANSMITTING:
-            {
-                mbPhySendData(modbusPort,
-                                modbusPort->tx_buffer,
-                                modbusPort->tx_buffer_length);
-                                
-                modbusPort->state = MB_PORT_STATE_MASTER_RX_WAITING;
-                break;
-            }
-            case MB_PORT_STATE_MASTER_RX_WAITING:
-            {
-            	uint8_t byte = 0;
-
-                if (osMessageQueueGet(ctx->rxQueueHandle, &byte, NULL, MODBUS_MASTER_RESPONSE_TIMEOUT_MS) == osOK)
-                {
-                	modbusPort->rx_buffer[modbusPort->rx_buffer_length++] = byte;
-					while (osMessageQueueGet(ctx->rxQueueHandle, &byte, NULL, MODBUS_MASTER_INTER_BYTE_TIMEOUT_MS ) == osOK)
-					{
-						if (modbusPort->rx_buffer_length < sizeof(modbusPort->rx_buffer))
-						    modbusPort->rx_buffer[modbusPort->rx_buffer_length++] = byte;
-						else
-						    DEBUG_LOGE(DEBUG_TAG_MODBUS, "MB", "RX buffer overflow");
-
-					}
-                }
-
-                // Timeout happened, check what was received so far
-                if(modbusPort->rx_buffer_length == 0)
-                {
-                    DEBUG_LOGW(DEBUG_TAG_MODBUS, "MB", "Response timeout from slave");
-                    modbusPort->state = MB_PORT_STATE_MASTER_RESET;
-                }
-                else
-                {	
-//                    mbPhyPreRx(modbusPort, modbusPort->rx_buffer, byte);
-                    mbRxFrameParse(modbusPort, 
-                       queryInProcess.slaveId,
-                        modbusPort->tx_buffer[1], 
-                        queryInProcess.address, 
-                        queryInProcess.regCount);
-                    modbusPort->state = MB_PORT_STATE_MASTER_RX_PROCESSING;
-                }                
-                break;
-            }
-            case MB_PORT_STATE_MASTER_RX_PROCESSING:
-            {
-                modbusPort->state = MB_PORT_STATE_MASTER_RESET;
-                break;
-            }
-            case MB_PORT_STATE_MASTER_RESET:
-            {
-                // Reset the Modbus port state      
-                modbusPort->state = MB_PORT_STATE_MASTER_IDLE; // Reset to idle state
-                osDelay(100);
-                break;
-            }
-            case MB_PORT_STATE_DISABLED:
-            {
-                // Port is disabled, do nothing
-                break;
-            }
-            default:
-                break;
-        }
-    }
-    osThreadExit(); // Exit the task when done
-}
 
 gsg_result_t MB_createPortStatic(modbus_port_t * port)
 {
-    // Validate the input struct
-    if (portCount >= MODBUS_PORT_MAX_COUNT)
-       return GSG_ERROR;
-
     if (port == NULL)
         return GSG_INVALID_ARG;
 
@@ -203,10 +26,16 @@ gsg_result_t MB_createPortStatic(modbus_port_t * port)
         return GSG_INVALID_ARG; // Invalid port type
 
     port->state = MB_PORT_STATE_DISABLED; // Set initial state to disabled
-
+    for (uint8_t i = 0; i < MODBUS_MASTER_QUERY_LIST_LENGTH; i++)
+	{
+    	port->queryList[i] = NULL;
+	}
     // Reset memory for the port buffers
-//    memset(port->rx_buffer, 0, MODBUS_PORT_RX_BUFFER_SIZE);
-//    memset(port->tx_buffer, 0, MODBUS_PORT_TX_BUFFER_SIZE);
+    memset(port->rx_buffer, 0, MODBUS_PORT_RX_BUFFER_SIZE);
+    memset(port->tx_buffer, 0, MODBUS_PORT_TX_BUFFER_SIZE);
+
+    port->rx_buffer_length = port->tx_buffer_length = 0;
+
 
     #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == ENABLED)
         // Initialize registers, buffers, etc. as needed
@@ -240,9 +69,13 @@ gsg_result_t MB_startPort(modbus_port_t * port)
     if (port->eventHandle == NULL)
         return GSG_ERROR;
 
+
+
     #if (MODBUS_MASTER_MODE == ENABLED)
         if(port->mode == MODBUS_MODE_MASTER)
         {
+            port->slaveData = NULL; // No slave info in master mode
+
             // Create query queue (FIFO for pending queries)
             port->queryQueueHandle = osMessageQueueNew(
                 MODBUS_MASTER_QUERY_QUEUE_LENGTH,             // max queue length
@@ -251,6 +84,21 @@ gsg_result_t MB_startPort(modbus_port_t * port)
             );
             if (port->queryQueueHandle == NULL)
                 return GSG_ERROR;
+
+            // Create configuration request queue
+			port->configRqstQueHandle = osMessageQueueNew(
+				5,          // max queue length
+				sizeof(mb_config_request_t),                // item size
+				NULL
+			);
+			if (port->configRqstQueHandle == NULL)
+				return GSG_ERROR;
+
+			// Start periodic query timer and save the handle
+			port->queryTimerHandle = osTimerNew(mbMasterQueryTimerHandler, osTimerPeriodic, port, NULL);
+			if (port->queryTimerHandle == NULL)
+				return GSG_ERROR;
+			osTimerStart(port->queryTimerHandle, 100); // 100 ms periodic timer
         }
     #endif
 
@@ -261,20 +109,25 @@ gsg_result_t MB_startPort(modbus_port_t * port)
       .priority = (osPriority_t) osPriorityNormal,
     };
 
-    port->taskHandle = osThreadNew(modbusTaskHandler,
+    if(port->mode == MODBUS_MODE_MASTER)
+    {
+        port->taskHandle = osThreadNew(modbusMasterTaskHandler,
     		port,
 			&defaultTask_attributes);
+    }
+    else if(port->mode == MODBUS_MODE_SLAVE)
+    {
+        port->taskHandle = osThreadNew(modbusSlaveTaskHandler,
+    		port,
+			&defaultTask_attributes);
+    }
+    
     if (port->taskHandle == NULL)
     {
     	DEBUG_LOGE(DEBUG_TAG_MODBUS,"MB","Error Creating task");
         return GSG_ERROR;
     }
 
-    // Start periodic query timer and save the handle
-    port->queryTimerHandle = osTimerNew(mbMasterQueryTimerHandler, osTimerPeriodic, port, NULL);
-    if (port->queryTimerHandle == NULL)
-        return GSG_ERROR;
-    osTimerStart(port->queryTimerHandle, 100); // 100 ms periodic timer
     return GSG_SUCCESS;
 }
 

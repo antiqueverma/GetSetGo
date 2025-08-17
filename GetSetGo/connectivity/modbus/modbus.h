@@ -29,6 +29,7 @@
 
 // Slave mode configurations
 #define MODBUS_SLAVE_MODE                               ENABLED
+#define MODBUS_SLAVE_RX_QUERY_TIMEOUT_MS                osWaitForever // timeout in ms
 
 #if MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP 
     #error "Unified register map is not yet supported in this version of the Modbus library."
@@ -70,6 +71,7 @@ typedef enum {
 
     // Slave Mode States
     MB_PORT_STATE_SLAVE_IDLE,               // Wait for a request
+    MB_PORT_STATE_SLAVE_RX_WAITING,         // Wait for a request
     MB_PORT_STATE_SLAVE_RX_PROCESSING,      // Process the received request
     MB_PORT_STATE_SLAVE_TX_PROCESSING,      // Process the received request
     MB_PORT_STATE_SLAVE_TRANSMITTING,       // Transmit the response
@@ -207,12 +209,27 @@ typedef struct{
     uint8_t reserved:7;
 } modbus_slave_info_flags_t;
 
+typedef enum{
+    MB_MASTER_ADD_QUERY,
+    MB_MASTER_REMOVE_QUERY,
+    MB_MASTER_UPDATE_QUERY,
+    MB_MASTER_ADD_SLAVE,
+    MB_MASTER_REMOVE_SLAVE,
+    MB_MASTER_UPDATE_SLAVE,
+    _MB_MASTER_RQST_TYPE_MAX,
+} mb_cfg_rqst_type_t;
+
 typedef struct {
     uint32_t lastRxByteTime; // Last time a byte was received
     osMessageQueueId_t rxQueueHandle;
     // uint8_t rxBuffer[512];
     // uint16_t byteCtr; // Number of bytes received
 } mbPhyRxCbContext_t;
+
+typedef struct{
+    void *rqstdata;
+    mb_cfg_rqst_type_t rqstType;
+} mb_config_request_t;
 
 typedef struct {
 
@@ -254,8 +271,8 @@ typedef struct{
     #else
         uint8_t  tx_buffer[MODBUS_PORT_TX_BUFFER_SIZE]; // Static transmit buffer
         uint16_t tx_buffer_length; // Length of the transmit buffer
-        uint8_t  rx_buffer[MODBUS_PORT_RX_BUFFER_SIZE]; // we use ctx objects now
-        uint16_t rx_buffer_length; // Length of the receive buffer   // we use ctx objects now
+        uint8_t  rx_buffer[MODBUS_PORT_RX_BUFFER_SIZE]; 
+        uint16_t rx_buffer_length; // Length of the receive buffer 
     #endif
 
     // OS Thread Management
@@ -264,13 +281,16 @@ typedef struct{
     osEventFlagsId_t            eventHandle;
 
     #if (MODBUS_MASTER_MODE == ENABLED)
+        mb_master_query_t           *queryList[MODBUS_MASTER_QUERY_LIST_LENGTH];
         osTimerId_t                 queryTimerHandle;
-        mb_master_query_t           *queryTable;
-        uint16_t                    queryTableLength;
         osMessageQueueId_t          queryQueueHandle;
         mbPhyRxCbContext_t          *rxCtx[_MODBUS_PHY_MAX];
         modbus_slave_info_t *slave[MODBUS_MASTER_SLAVE_MAX_COUNT];
+        osMessageQueueId_t          configRqstQueHandle;
     #endif
+
+    modbus_slave_info_t  *masterData; // Master mode structure
+    modbus_slave_info_t  *slaveData; // Slave mode structure
 
     #if MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP
         // Modbus Register Tables
@@ -312,8 +332,8 @@ gsg_result_t MB_unregisterPhyRxContext(modbus_phy_t phy, modbus_port_t *port);
 
 
 // Master mode API
-gsg_result_t MB_masterRegisterQuery(modbus_port_t *port, const mb_master_query_t *query);
-gsg_result_t MB_masterUnregisterQuery(modbus_port_t *port, const mb_master_query_t *query);
+gsg_result_t MB_masterRegisterQuery(modbus_port_t *port, mb_master_query_t *query);
+gsg_result_t MB_masterUnregisterQuery(modbus_port_t *port, mb_master_query_t *query);
 gsg_result_t MB_masterRegisterSlave(modbus_port_t *port, modbus_slave_info_t * slave );
 
 

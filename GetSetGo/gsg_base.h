@@ -47,8 +47,6 @@
 
 #if GSG_USE_MODBUS == GSG_ENABLE
   #include "connectivity/modbus/modbus.h"
-  #include "connectivity/modbus/modbus_master.h"
-  #include "connectivity/modbus/modbus_register_interface.h"
 #endif
 
 #if GSG_USE_QUEUE == GSG_ENABLE

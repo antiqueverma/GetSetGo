@@ -155,6 +155,8 @@ modbus_error_t mbRxFrameParse(modbus_port_t *port, uint8_t slaveId, modbus_func_
     if (slave == NULL)
         return MB_ERROR_INVALID_SLAVE;
 
+    slave->status.connected = 1; // Mark the slave as connected
+
     if(funcCode != frame[1])
         return MB_ERROR_INVALID_FUNCTION_CODE;
 
