@@ -37,7 +37,7 @@ void modbusSlaveTaskHandler(void * argument)
             case MB_PORT_STATE_SLAVE_IDLE:
             {
             	// Check for any configuration requests and process them all at once
-				while (osMessageQueueGet(modbusPort->configRqstQueHandle, &configRqst, NULL, 0) == osOK)
+				while (xQueueReceive(modbusPort->configRqstQueHandle, &configRqst, 0) == pdTRUE)
 				{
                     sprintf(tempBuffer, "New Rqst:%d", configRqst.rqstType);
                     DEBUG_LOGD(DEBUG_TAG_MODBUS,"MBS",tempBuffer);
@@ -51,10 +51,10 @@ void modbusSlaveTaskHandler(void * argument)
             case MB_PORT_STATE_SLAVE_RX_WAITING:
             {
                 uint8_t byte = 0;
-                if (osMessageQueueGet(ctx->rxQueueHandle, &byte, NULL, MODBUS_SLAVE_RX_QUERY_TIMEOUT_MS) == osOK)
+                if (xQueueReceive(ctx->rxQueueHandle, &byte, pdMS_TO_TICKS(MODBUS_SLAVE_RX_QUERY_TIMEOUT_MS)) == pdTRUE)
                 {
                 	modbusPort->rx_buffer[modbusPort->rx_buffer_length++] = byte;
-					while (osMessageQueueGet(ctx->rxQueueHandle, &byte, NULL, MODBUS_MASTER_INTER_BYTE_TIMEOUT_MS ) == osOK)
+					while (xQueueReceive(ctx->rxQueueHandle, &byte, pdMS_TO_TICKS(MODBUS_MASTER_INTER_BYTE_TIMEOUT_MS)) == pdTRUE)
 					{
 						if (modbusPort->rx_buffer_length < sizeof(modbusPort->rx_buffer))
 						    modbusPort->rx_buffer[modbusPort->rx_buffer_length++] = byte;
@@ -92,7 +92,7 @@ void modbusSlaveTaskHandler(void * argument)
 					modbusPort->state = MB_PORT_STATE_MASTER_RESET;
 					break;
 				}
-				osMessageQueueReset (ctx->rxQueueHandle);
+				xQueueReset (ctx->rxQueueHandle);
 				modbusPort->rx_buffer_length = 0;
 
 //                mbTxGenFrame(modbusPort,
@@ -128,5 +128,5 @@ void modbusSlaveTaskHandler(void * argument)
                 break;
         }
     }
-    osThreadExit(); // Exit the task when done
+    vTaskDelete(NULL); // Exit the task when done
 }

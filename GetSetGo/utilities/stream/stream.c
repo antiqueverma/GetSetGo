@@ -81,10 +81,10 @@ static void streamTask( void *arg)
                 streamTxCallback(dataBuff); // Send the data using the callback
             }
             memset(dataBuff, 0, sizeof(dataBuff)); // Clear the data buffer
-            osDelay(STREAM_INTERVAL_MS); // Delay for the specified interval
+            vTaskDelay(pdMS_TO_TICKS(STREAM_INTERVAL_MS)); // Delay for the specified interval
         }
     }
-    osThreadExit(); // Exit the thread gracefully
+    vTaskDelete(NULL); // Exit the thread gracefully
 }
 
 void Stream_Init(void)

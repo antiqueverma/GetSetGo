@@ -5,7 +5,7 @@
 
 // Debugger Configs
 #define DEBUG_LOG_EN                1
-#define DEBUG_TASK_PRIORITY         (osPriority_t) osPriorityLow//1
+#define DEBUG_TASK_PRIORITY         11
 #define DEBUG_TASK_STACK_SIZE       KB_to_B(2)
 #define DEBUG_TX_BUFF_SIZE          KB_to_B(1)
 #define DEBUG_MSG_MAX_LEN           128
@@ -69,14 +69,20 @@ typedef enum {
    #define DEBUG_ASSERT(condition)                                                                 	\
       do {                                                                                         	\
          if (!(condition)) {                                                                       	\
-               char assertStr[100];                                                                 \
-               debugLogRaw("**********************************************************");          	\
-               sprintf(assertStr, "Assert Failed in %s", __FILE__);           						\
+               char assertStr[100];                                                                   \
+               debugLogRaw("\n**********************************************************");          	\
+               sprintf(assertStr, "\nAssert Failed in %s", __FILE__);           						      \
                debugLogRaw(assertStr);                                                             	\
-               sprintf(assertStr, "at line %d",__LINE__);           								\
+               sprintf(assertStr, "\nLine: %d\n",__LINE__);           								         \
                debugLogRaw(assertStr);                                                             	\
                debugLogRaw("**********************************************************");          	\
-               osThreadExit();                                                                     	\
+               if (xPortIsInsideInterrupt())                                                          \
+               {                                                                                      \
+                  taskDISABLE_INTERRUPTS();                                                           \
+                  for(;;);                                                                            \
+               }                                                                                      \
+               else                                                                                   \
+                  vTaskSuspend(NULL);                                                                 \
          }                                                                                         	\
       } while (0)
     

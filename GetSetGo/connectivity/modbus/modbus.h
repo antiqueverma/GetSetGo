@@ -3,33 +3,36 @@
 #define MODBUS_H_
 
 #include "gsg_base.h"
+#include <include/event_groups.h>
+#include <include/queue.h>
 
 
 /**************************************************************************************************************
  *                                          Modbus Library Configuration
  **************************************************************************************************************/
 // OS Configuration
-#define MODBUS_TASK_PRIORITY                            osPriorityNormal
-#define MODBUS_TASK_STACK_SIZE                          KB_2_B(6)
+#define MODBUS_TASK_PRIORITY                            10
+#define MODBUS_TASK_STACK_SIZE                          KB_to_B(6)
 #define MODBUS_PORT_USE_HEAP                            DISABLED
 
 // Port Configurations
 #define MODBUS_PORT_MAX_COUNT                           5   // Maximum number of Modbus ports
 #define MODBUS_INTER_BYTE_TIMEOUT                       10 // Max time after which a frame is considered complete (in ms)
 #define MODBUS_FRAME_MAX_LENGTH                         256 // Maximum Modbus frame length
+#define MODBUS_CONFIG_REQUEST_QUEUE_LENGTH              5   // Maximum number of configuration requests that can be queued
 // Master mode configurations
 #define MODBUS_MASTER_MODE                              ENABLED
 #define MODBUS_MASTER_MAX_SLAVES                        10 // Maximum 255 slaves supported
 #define MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP          DISABLED
-#define MODBUS_MASTER_QUERY_LIST_LENGTH                 10 // Maximum number of queries that can be registered
-#define MODBUS_MASTER_QUERY_QUEUE_LENGTH                10 // Maximum number of queries that can wait to be processed
+#define MODBUS_MASTER_QUERY_LIST_LENGTH                 5 // Maximum number of queries that can be registered
+#define MODBUS_MASTER_QUERY_QUEUE_LENGTH                5 // Maximum number of queries that can wait to be processed
 #define MODBUS_MASTER_SLAVE_MAX_COUNT                   10 // Maximum number of slaves supported
 #define MODBUS_MASTER_RESPONSE_TIMEOUT_MS               1000 // Response timeout in ms
 #define MODBUS_MASTER_INTER_BYTE_TIMEOUT_MS             10 // Response timeout in ms
 
 // Slave mode configurations
 #define MODBUS_SLAVE_MODE                               ENABLED
-#define MODBUS_SLAVE_RX_QUERY_TIMEOUT_MS                osWaitForever // timeout in ms
+#define MODBUS_SLAVE_RX_QUERY_TIMEOUT_MS                portMAX_DELAY // timeout in ms
 
 #if MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP 
     #error "Unified register map is not yet supported in this version of the Modbus library."
@@ -221,7 +224,7 @@ typedef enum{
 
 typedef struct {
     uint32_t lastRxByteTime; // Last time a byte was received
-    osMessageQueueId_t rxQueueHandle;
+    QueueHandle_t rxQueueHandle; // Queue for received bytes
     // uint8_t rxBuffer[512];
     // uint16_t byteCtr; // Number of bytes received
 } mbPhyRxCbContext_t;
@@ -276,17 +279,16 @@ typedef struct{
     #endif
 
     // OS Thread Management
-    osThreadId_t                taskHandle;
-    const osThreadAttr_t        taskAttributes;
-    osEventFlagsId_t            eventHandle;
+    TaskHandle_t                taskHandle;
+    EventGroupHandle_t          eventHandle;
 
     #if (MODBUS_MASTER_MODE == ENABLED)
         mb_master_query_t           *queryList[MODBUS_MASTER_QUERY_LIST_LENGTH];
-        osTimerId_t                 queryTimerHandle;
-        osMessageQueueId_t          queryQueueHandle;
+        TimerHandle_t                 queryTimerHandle;
+        QueueHandle_t                 queryQueueHandle;
         mbPhyRxCbContext_t          *rxCtx[_MODBUS_PHY_MAX];
         modbus_slave_info_t *slave[MODBUS_MASTER_SLAVE_MAX_COUNT];
-        osMessageQueueId_t          configRqstQueHandle;
+        QueueHandle_t                 configRqstQueHandle;
     #endif
 
     modbus_slave_info_t  *masterData; // Master mode structure

@@ -48,7 +48,7 @@ void modbusMasterTaskHandler(void * argument)
             case MB_PORT_STATE_MASTER_IDLE:
             {
             	 // Check for any configuration requests and process them all at once
-				while (osMessageQueueGet(modbusPort->configRqstQueHandle, &configRqst, NULL, 0) == osOK)
+				while (xQueueReceive(modbusPort->configRqstQueHandle, &configRqst, 0) == pdTRUE)
 				{
                     sprintf(tempBuffer, "New Rqst:%d", configRqst.rqstType);
                     DEBUG_LOGD(DEBUG_TAG_MODBUS,"MB",tempBuffer);
@@ -59,10 +59,9 @@ void modbusMasterTaskHandler(void * argument)
                 // DEBUG_LOGD(DEBUG_TAG_MODBUS,"MB","#A");
                 mb_master_query_t *queryPtr = NULL; // Temporary pointer to receive from queue
                 // Wait up to 50ms for a query to be available in the queue
-                if (osMessageQueueGet(modbusPort->queryQueueHandle,
+                if (xQueueReceive(modbusPort->queryQueueHandle,
                                     &queryPtr, 
-                                    NULL,
-                                    50) == osOK)  // Timeout in ms
+                                    pdMS_TO_TICKS(50)) == pdTRUE)  // Timeout in ms
                 {
                     // Copy the struct data from the queued pointer to local variable
                     if(queryPtr != NULL)
@@ -96,7 +95,7 @@ void modbusMasterTaskHandler(void * argument)
 					modbusPort->state = MB_PORT_STATE_MASTER_RESET;
 					break;
 				}
-				osMessageQueueReset (ctx->rxQueueHandle);
+				xQueueReset (ctx->rxQueueHandle);
 				modbusPort->rx_buffer_length = 0;
 
                 mbTxGenFrame(modbusPort,
@@ -121,10 +120,10 @@ void modbusMasterTaskHandler(void * argument)
             {
             	uint8_t byte = 0;
 
-                if (osMessageQueueGet(ctx->rxQueueHandle, &byte, NULL, MODBUS_MASTER_RESPONSE_TIMEOUT_MS) == osOK)
+                if (xQueueReceive(ctx->rxQueueHandle, &byte, pdMS_TO_TICKS(MODBUS_MASTER_RESPONSE_TIMEOUT_MS)) == pdTRUE)
                 {
                 	modbusPort->rx_buffer[modbusPort->rx_buffer_length++] = byte;
-					while (osMessageQueueGet(ctx->rxQueueHandle, &byte, NULL, MODBUS_MASTER_INTER_BYTE_TIMEOUT_MS ) == osOK)
+					while (xQueueReceive(ctx->rxQueueHandle, &byte, pdMS_TO_TICKS(MODBUS_MASTER_INTER_BYTE_TIMEOUT_MS)) == pdTRUE)
 					{
 						if (modbusPort->rx_buffer_length < sizeof(modbusPort->rx_buffer))
 						    modbusPort->rx_buffer[modbusPort->rx_buffer_length++] = byte;
@@ -142,7 +141,7 @@ void modbusMasterTaskHandler(void * argument)
                 }
                 else
                 {	
-//                    mbPhyPreRx(modbusPort, modbusPort->rx_buffer, byte);
+                    //mbPhyPreRx(modbusPort, modbusPort->rx_buffer, byte);
                     mbRxFrameParse(modbusPort, 
                        queryInProcess.slaveId,
                         modbusPort->tx_buffer[1], 
@@ -154,7 +153,7 @@ void modbusMasterTaskHandler(void * argument)
             }
             case MB_PORT_STATE_MASTER_RX_PROCESSING:
             {
-                osDelay(100);
+                vTaskDelay(pdMS_TO_TICKS(100));
                 modbusPort->state = MB_PORT_STATE_MASTER_RESET;
                 break;
             }
@@ -173,7 +172,7 @@ void modbusMasterTaskHandler(void * argument)
                 break;
         }
     }
-    osThreadExit(); // Exit the task when done
+    vTaskDelete(NULL); // Exit the task when done
 }
 
 
@@ -257,14 +256,13 @@ gsg_result_t MB_masterUnregisterSlave(modbus_port_t *port, uint8_t slaveId )
     return GSG_INVALID_ARG; // Slave ID not found
 }
 
-void mbMasterQueryTimerHandler(void *arg)
+void mbMasterQueryTimerHandler( TimerHandle_t xTimer )
 {
-    modbus_port_t *port = (modbus_port_t *)arg;
-     if (port == NULL)
-        return;
-
-    uint32_t currentTime = osKernelGetTickCount();  // Get current time in ms
-
+    modbus_port_t *port = (modbus_port_t *) pvTimerGetTimerID(xTimer);
+    DEBUG_ASSERT(port != NULL);
+    
+    uint32_t currentTime = xTaskGetTickCount();  // Get current time in ms
+    // return;
     for (uint8_t i = 0; i < MODBUS_MASTER_QUERY_LIST_LENGTH; i++)
     {
         mb_master_query_t *query = port->queryList[i];
@@ -297,11 +295,10 @@ void mbMasterQueryTimerHandler(void *arg)
         if ((elapsed >= periodMs) || (periodMs == 0))
         {
             query->lastExecutionTimeMs = currentTime;
-            if (osMessageQueuePut(port->queryQueueHandle, &query, 0, 0) != osOK)
+            if (xQueueSend(port->queryQueueHandle, &query, 0) != pdTRUE)
             {
                 DEBUG_LOGW(DEBUG_TAG_MODBUS,"MBM","Query queue full");
             }
-            osEventFlagsSet(port->eventHandle, MODBUS_EVENT_QUERY_TODO);// also set the flag
 
             // Remove the query if it's aperiodic, freeing up a slot
             if(query->periodicity == MB_MASTER_QUERY_APERIODIC)
@@ -325,7 +322,7 @@ void mb_masterProcessConfigRequest(modbus_port_t *port, mb_config_request_t *con
             if(query == NULL)
                 return;
             // Stop the port's query handler timer before accessing
-            osTimerStop(port->queryTimerHandle);
+            xTimerStop(port->queryTimerHandle,0);
 
             for (uint8_t i = 0; i < MODBUS_MASTER_QUERY_LIST_LENGTH; i++)
             {
@@ -338,7 +335,7 @@ void mb_masterProcessConfigRequest(modbus_port_t *port, mb_config_request_t *con
                 }
             }
             // Start the query timer back
-            osTimerStart(port->queryTimerHandle, 100);
+            xTimerStart(port->queryTimerHandle, 0);
             break;
         }
         case MB_MASTER_REMOVE_QUERY:
@@ -348,7 +345,7 @@ void mb_masterProcessConfigRequest(modbus_port_t *port, mb_config_request_t *con
                 return;
 
             // Stop the port's query handler timer before accessing
-            osTimerStop(port->queryTimerHandle);
+            xTimerStop(port->queryTimerHandle,0);
 
             for (uint8_t i = 0; i < MODBUS_MASTER_QUERY_LIST_LENGTH; i++)
             {
@@ -361,7 +358,7 @@ void mb_masterProcessConfigRequest(modbus_port_t *port, mb_config_request_t *con
                 }
             }
             // Start the query timer back
-            osTimerStart(port->queryTimerHandle, 100);
+            xTimerStart(port->queryTimerHandle, 0);
             break;
         }
         case MB_MASTER_UPDATE_QUERY:
@@ -371,7 +368,7 @@ void mb_masterProcessConfigRequest(modbus_port_t *port, mb_config_request_t *con
                 return;
 
             // Stop the port's query handler timer before accessing
-            osTimerStop(port->queryTimerHandle);
+            xTimerStop(port->queryTimerHandle,0);
 
             for (uint8_t i = 0; i < MODBUS_MASTER_QUERY_LIST_LENGTH; i++)
             {
@@ -384,8 +381,7 @@ void mb_masterProcessConfigRequest(modbus_port_t *port, mb_config_request_t *con
                 }
             }
             // Start the query timer back
-            osTimerStart(port->queryTimerHandle, 100);
-//            osTimerStart(port->queryTimerHandle, port->queryPeriodTicks);
+            xTimerStart(port->queryTimerHandle, 0);
             break;
         }
         case MB_MASTER_ADD_SLAVE:
@@ -414,8 +410,10 @@ gsg_result_t MB_masterRegisterQuery(modbus_port_t *port, mb_master_query_t *quer
     request.rqstType = MB_MASTER_ADD_QUERY;
     request.rqstdata = query;
 
+
+
     // Register a config change request into the queue
-    if (osMessageQueuePut(port->configRqstQueHandle, &request, 0, 0) != osOK)
+    if (xQueueSend(port->configRqstQueHandle, &request, 0) != pdTRUE)
     {
         DEBUG_LOGE(DEBUG_TAG_MODBUS,"MBM","Config queue full");
         return GSG_OVERFLOW; // No space
@@ -430,7 +428,7 @@ gsg_result_t MB_masterUnregisterQuery(modbus_port_t *port, mb_master_query_t *qu
     request.rqstdata = query;
 
     // Register a config change request into the queue
-    if (osMessageQueuePut(port->configRqstQueHandle, &request, 0, 0) != osOK)
+    if (xQueueSend(port->configRqstQueHandle, &request, 0) != pdTRUE)
     {
         DEBUG_LOGE(DEBUG_TAG_MODBUS,"MBM","Config queue full");
         return GSG_OVERFLOW; // No space

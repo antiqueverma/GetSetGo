@@ -11,7 +11,7 @@ static modbusTxCallback_t modbusPhyTxCallbacks[_MODBUS_PHY_MAX] = {0};
 static mbPhyRxCbContext_t *mbPhyRxCbContext[_MODBUS_PHY_MAX] = {NULL};
 
 // Mutex per phy channel to protect access to the callbacks
-static osMutexId_t modbusPhyTxMutex[_MODBUS_PHY_MAX];
+static SemaphoreHandle_t modbusPhyTxMutex[_MODBUS_PHY_MAX];
 
 
 static uint16_t mbPhyPreTx(modbus_port_t *port, uint8_t *data, uint16_t size);
@@ -19,17 +19,16 @@ static uint16_t mbPhyPreTx(modbus_port_t *port, uint8_t *data, uint16_t size);
 
 gsg_result_t MB_registerPhyTxCallback(modbus_phy_t phy, modbusTxCallback_t cb)
 {
-    if (phy >= _MODBUS_PHY_MAX || cb == NULL)
-        return GSG_INVALID_ARG;
+    DEBUG_ASSERT(phy < _MODBUS_PHY_MAX);
+    DEBUG_ASSERT(cb != NULL);
 
     // Register the callback for the specified physical layer
     modbusPhyTxCallbacks[phy] = cb;
     
     // Initialize the mutex for this phy channel
-    modbusPhyTxMutex[phy] = osMutexNew(NULL);
+    modbusPhyTxMutex[phy] = xSemaphoreCreateMutex();
 
-    if (modbusPhyTxMutex[phy] == NULL)
-        return GSG_ERROR; // Failed to create mutex
+    DEBUG_ASSERT(modbusPhyTxMutex[phy] != NULL);
 
     return GSG_SUCCESS;
 }
@@ -44,7 +43,7 @@ gsg_result_t MB_unregisterPhyTxCallback(modbus_phy_t phy)
     // Delete the mutex for this phy channel
     if (modbusPhyTxMutex[phy] != NULL)
     {
-        osMutexDelete(modbusPhyTxMutex[phy]);
+        vSemaphoreDelete(modbusPhyTxMutex[phy]);
         modbusPhyTxMutex[phy] = NULL;
     }
     return GSG_SUCCESS;
@@ -52,7 +51,9 @@ gsg_result_t MB_unregisterPhyTxCallback(modbus_phy_t phy)
 
 gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size)
 {
-    if (port == NULL || data == NULL || size == 0)
+    DEBUG_ASSERT(port != NULL);
+
+    if (data == NULL || size == 0)
         return GSG_INVALID_ARG;
         
     uint8_t phy = MODBUS_PHY_NONE;
@@ -69,9 +70,10 @@ gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size)
 //    newSize = mbPhyPreTx(port, data, size);
 
     // Call the registered callback for the physical layer
-    osMutexAcquire(modbusPhyTxMutex[phy], osWaitForever);
+
+    xSemaphoreTake(modbusPhyTxMutex[phy], portMAX_DELAY);
     modbusPhyTxCallbacks[phy](data, size);
-    osMutexRelease(modbusPhyTxMutex[phy]);
+    xSemaphoreGive(modbusPhyTxMutex[phy]);
 
    char hex[20];
    if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG)
@@ -153,12 +155,12 @@ void MB_phyRxByteISRCallback(modbus_phy_t phy, uint8_t byte)
     if (ctx->rxQueueHandle == NULL)
         return;
 
-//    ctx->lastRxByteTime = osKernelGetTickCount();
+//    ctx->lastRxByteTime = xTaskGetTickCount();
 
     // Directly push the byte data into queue
-    if(osMessageQueuePut(ctx->rxQueueHandle, &byte, 0, 0) != osOK)
+    if(xQueueSendFromISR(ctx->rxQueueHandle, &byte, NULL) != pdTRUE)
     {
-        DEBUG_LOGE(DEBUG_TAG_MODBUS, "MB", "Rx buffer overflow");
+        //DEBUG_LOGE(DEBUG_TAG_MODBUS, "MB", "Rx buffer overflow");
     }
 }
 
@@ -171,7 +173,7 @@ gsg_result_t MB_registerPhyRxContext(modbus_phy_t phy, modbus_port_t *port, mbPh
     mbPhyRxCbContext[phy] = context;
 
     // Initialize the Rx queue for this phy channel
-    context->rxQueueHandle = osMessageQueueNew(MODBUS_PORT_RX_BUFFER_SIZE, sizeof(uint8_t), NULL);
+    context->rxQueueHandle = xQueueCreate(MODBUS_PORT_RX_BUFFER_SIZE, sizeof(uint8_t));
     if (context->rxQueueHandle == NULL)
         return GSG_ERROR; // Failed to create message queue
 

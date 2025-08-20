@@ -5,7 +5,7 @@
 
 // Set you project's setting:
 #define GSG_MCU_FAMILY		GSG_MCU_STM32
-#define GSG_OS_USED         GSG_OS_CMSIS_V2 
+#define GSG_OS_USED         GSG_OS_FREERTOS
 
 /* Enable/disable modules */ 
 #define GSG_USE_MEMALLOC    GSG_DISABLE

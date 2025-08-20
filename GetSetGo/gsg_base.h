@@ -21,15 +21,15 @@
 //#endif
 
 // freeRTOS kernel includes
-//#if (GSG_OS_USED == GSG_OS_FREERTOS)
-//  #include "freertos/FreeRTOS.h"
-//  #include "freertos/task.h"
-//  #include "freertos/semphr.h"
-//  #include "freertos/queue.h"
-//  #include "freertos/timers.h"
-//#elif (GSG_OS_USED == GSG_OS_CMSIS_V2)
-  #include "cmsis_os2.h"
-//#endif
+#if (GSG_OS_USED == GSG_OS_FREERTOS)
+  #include "FreeRTOS.h"
+  #include "task.h"
+  #include "semphr.h"
+  #include "queue.h"
+  #include "timers.h"
+#elif (GSG_OS_USED == GSG_OS_CMSIS_V2)
+
+#endif
 
 
 // 📦 Conditionally Include Enabled Modules

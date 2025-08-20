@@ -27,7 +27,7 @@ void mbTxGenFrame(modbus_port_t *port, mb_query_type_t queryType, uint8_t slaveI
         case MB_QUERY_READ_COILS:
         {
             DEBUG_LOGE(DEBUG_TAG_COMM,"MB", "Read coils NYI");
-            osThreadExit();
+            vTaskSuspend(NULL);
             // Build the frame for reading coils
             frame[1] = MB_FUNC_READ_COILS;
             frame[2] = (address >> 8) & 0xFF;
@@ -56,7 +56,7 @@ void mbTxGenFrame(modbus_port_t *port, mb_query_type_t queryType, uint8_t slaveI
         case MB_QUERY_READ_DISCRETE_INPUTS:
         {
             DEBUG_LOGE(DEBUG_TAG_COMM,"MB", "Read discrete inputs NYI");
-            osThreadExit();
+            vTaskSuspend(NULL);
             // Build the frame for reading discrete inputs
             frame[1] = MB_FUNC_READ_DISCRETE_INPUTS;
             frame[2] = (address >> 8) & 0xFF;

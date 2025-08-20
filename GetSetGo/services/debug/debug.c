@@ -1,21 +1,18 @@
 #include "debug.h"
+// Based on FreeRTOS
 /*********************************************************
 * Suggestions:
 *  Consider supporting per-tag log level control instead of a single global debugLevelMax.
 *  Allow switching output dynamically to different channels (UART, RTT, file, etc.) at runtime by tagging logs with output types.
-* If logging from ISR is needed, consider splitting API (debugLogFromISR with osMessageQueuePut with ISR variant).
+* If logging from ISR is needed, consider splitting API (debugLogFromISR with xQueueSend with ISR variant).
 * Add a compile-time feature flag to remove logging entirely (#define DEBUG_LOG_EN 0) for release builds.
 *
 **********************************************************/
-static osMessageQueueId_t        debugTxQueue;
+static QueueHandle_t        debugTxQueue;
 // static StreamBufferHandle_t     debugStreamHandle;
-static osMutexId_t               debugLogMutex;
-static osThreadId_t              debugTaskHandle = NULL;
-static const osThreadAttr_t      debugTask_attributes = {
-                                   .name = "DBG",
-                                   .stack_size = DEBUG_TASK_STACK_SIZE,
-                                   .priority = DEBUG_TASK_PRIORITY,
-                               };
+static SemaphoreHandle_t               debugLogMutex;
+static TaskHandle_t              debugTaskHandle = NULL;
+
 static debugTxCallback_t    debugTxCallbacks[_DEBUG_CHANNEL_MAX] = {0};
 static uint64_t             debugTagMask; // All enabled by default
 static uint8_t              debugLevelMax;
@@ -32,8 +29,9 @@ void DEBUG_Init( void )
 {
    debugLevelMax = DEBUG_LEVEL_VERBOSE;
    debugTagMask = UINT64_MAX;
-   debugTaskHandle = osThreadNew(debugTask, NULL, &debugTask_attributes);
-   
+   debugTaskHandle = xTaskCreate(debugTask, "DBG", 
+            DEBUG_TASK_STACK_SIZE, NULL, 
+            DEBUG_TASK_PRIORITY, &debugTaskHandle);
 }
 void DEBUG_Log_Switch(debugTagId_t tag, bool enable)
 {
@@ -54,22 +52,22 @@ uint8_t DEBUG_LogLevelGet( void )
 }
 static void debugTask(void *arg)
 {
-   debugLogMutex = osMutexNew(NULL);
-   debugTxQueue = osMessageQueueNew(DEBUG_TX_BUFF_SIZE, sizeof(char), NULL);
+    // Create the mutex
+   debugLogMutex = xSemaphoreCreateMutex();
+   debugTxQueue = xQueueCreate(DEBUG_TX_BUFF_SIZE, sizeof(char));
    if (debugLogMutex == NULL || debugTxQueue == NULL)
    {
-       // Initialization failed, delete the task
-       osThreadExit();
+       vTaskDelete(NULL); // Exit task if mutex or queue creation failed
     }
    char byte;
    while (1)
    {
-       if (osMessageQueueGet(debugTxQueue, &byte, NULL, osWaitForever) == osOK)
+       if (xQueueReceive(debugTxQueue, &byte, portMAX_DELAY) == pdTRUE)
        {
            debugTransmitByte(byte);
        }
    }
-    osThreadExit();
+   vTaskDelete(NULL);
 }
 static void debugTransmitByte(char byte)
 {
@@ -80,13 +78,13 @@ static void debugTransmitByte(char byte)
 }
 static uint32_t getTimeStamp( void )
 {
-   return  osKernelGetTickCount();
+   return  xTaskGetTickCount();
 }
 void debugLog(debugTagId_t tagId, char level, char * tag, char * msg)
 {
    if(DEBUG_LOG_IS_ENABLED(tagId) == 0)
        return;
-//   if (osMutexAcquire(debugLogMutex, 10) == osOK)
+   if (xSemaphoreTake(debugLogMutex, 10) == pdTRUE)
    {
        char msgBuff[DEBUG_MSG_MAX_LEN];
        memset(msgBuff, 0x00, sizeof(msgBuff));
@@ -113,28 +111,28 @@ void debugLog(debugTagId_t tagId, char level, char * tag, char * msg)
        // Send each byte to the queue
        for (uint16_t i = 0; i < offset; i++)
        {
-           if (osMessageQueuePut(debugTxQueue, &msgBuff[i], 0, 0) != osOK)
+           if (xQueueSend(debugTxQueue, &msgBuff[i], 0) != pdTRUE)
            {
                break;
            }
        }
-//       osMutexRelease(debugLogMutex);
+       xSemaphoreGive(debugLogMutex);
    }
 }
 void debugLogRaw(char * msg)
 {
-   if (osMutexAcquire(debugLogMutex, osWaitForever) == osOK)
+   if (xSemaphoreTake(debugLogMutex, portMAX_DELAY) == pdTRUE)
    {
        // Send each byte to the queue until null terminator in source string
        while(*msg != '\0')
        {
-           if (osMessageQueuePut(debugTxQueue, msg, 0, 0) != osOK)
+           if (xQueueSend(debugTxQueue, msg, 0) != pdTRUE)
            {
                break;
            }
            msg++;
        }
-       osMutexRelease(debugLogMutex);
+       xSemaphoreGive(debugLogMutex);
    }
 }
 gsg_result_t DEBUG_RegisterTxCallback(debug_channel_t channel, debugTxCallback_t cb)
