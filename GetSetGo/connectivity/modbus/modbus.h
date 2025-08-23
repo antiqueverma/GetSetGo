@@ -24,11 +24,13 @@
 #define MODBUS_MASTER_MODE                              ENABLED
 #define MODBUS_MASTER_MAX_SLAVES                        10 // Maximum 255 slaves supported
 #define MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP          DISABLED
-#define MODBUS_MASTER_QUERY_LIST_LENGTH                 5 // Maximum number of queries that can be registered
-#define MODBUS_MASTER_QUERY_QUEUE_LENGTH                5 // Maximum number of queries that can wait to be processed
+#define MODBUS_MASTER_QUERY_LIST_LENGTH                 20 // Maximum number of queries that can be registered
+#define MODBUS_MASTER_QUERY_QUEUE_LENGTH                7   // Maximum number of queries that can wait to be processed
 #define MODBUS_MASTER_SLAVE_MAX_COUNT                   10 // Maximum number of slaves supported
 #define MODBUS_MASTER_RESPONSE_TIMEOUT_MS               1000 // Response timeout in ms
-#define MODBUS_MASTER_INTER_BYTE_TIMEOUT_MS             10 // Response timeout in ms
+#define MODBUS_MASTER_INTER_BYTE_TIMEOUT_MS             10 // Inter-byte timeout in ms
+#define MODBUS_MASTER_INTER_FRAME_DELAY_MS              10 // Inter-frame delay in ms
+#define MODBUS_MASTER_IDLE_DELAY_MS              2 // Idle timeout (in ms) when master task has nothing to do at all
 
 // Slave mode configurations
 #define MODBUS_SLAVE_MODE                               ENABLED
@@ -66,6 +68,7 @@ typedef enum {
 
     // Master Mode States
     MB_PORT_STATE_MASTER_IDLE,              // Wait for a query trigger
+    MB_PORT_STATE_MASTER_QUERY_WAITING,     // Wait for a query to be triggered
     MB_PORT_STATE_MASTER_TX_PROCESSING,     // generate Modbus frame
     MB_PORT_STATE_MASTER_TRANSMITTING,      // Transmit the frame
     MB_PORT_STATE_MASTER_RX_WAITING,        // Wait for a response
@@ -168,6 +171,7 @@ typedef enum{
     MB_MASTER_QUERY_PERIOD_200_MS,
     MB_MASTER_QUERY_PERIOD_500_MS,
     MB_MASTER_QUERY_PERIOD_1_S,
+	MB_MASTER_QUERY_PERIOD_2_S,
     MB_MASTER_QUERY_PERIOD_5_S,
     MB_MASTER_QUERY_PERIOD_10_S,
     MB_MASTER_QUERY_PERIOD_30_S,
@@ -260,22 +264,29 @@ typedef struct {
     #endif
 } modbus_slave_info_t;
 
+typedef enum {
+    MB_MASTER_EVENT_SLAVE_RESPONSE_RECEIVED,
+    MB_MASTER_EVENT_SLAVE_RESPONSE_TIMEOUT,
+    MB_MASTER_EVENT_INTER_FRAME_TIMEOUT,
+} mbMasterEvent_t;
+
 typedef struct{
     // Modbus Port Configuration
     modbus_mode_t       mode;       // Mode of Modbus communication (Master, Slave, etc.)
     modbus_phy_t        phy;
     modbus_port_state_t state; // Current state of the port
     modbus_port_flags_t flags; // Flags for additional port configuration
+    EventGroupHandle_t  eventGroup;
 
     // Buffers for receiving and transmitting data
     #if MODBUS_PORT_USE_HEAP
         uint8_t * rx_buffer; // Pointer to the receive buffer
         uint8_t * tx_buffer; // Pointer to the transmit buffer       
     #else
-        uint8_t  tx_buffer[MODBUS_PORT_TX_BUFFER_SIZE]; // Static transmit buffer
         uint16_t tx_buffer_length; // Length of the transmit buffer
+        uint16_t rx_buffer_length; // Length of the receive buffer
+        uint8_t  tx_buffer[MODBUS_PORT_TX_BUFFER_SIZE]; // Static transmit buffer
         uint8_t  rx_buffer[MODBUS_PORT_RX_BUFFER_SIZE]; 
-        uint16_t rx_buffer_length; // Length of the receive buffer 
     #endif
 
     // OS Thread Management

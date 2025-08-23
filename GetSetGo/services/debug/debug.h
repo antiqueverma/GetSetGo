@@ -95,6 +95,8 @@ typedef enum {
    #define DEBUG_ASSERT(condition)         ;
 #endif
 typedef void (*debugTxCallback_t)(const char *data, uint16_t size);
+extern uint16_t   DEBUG_command;
+
 void DEBUG_Init( void );
 void DEBUG_Log_Switch(debugTagId_t tag, bool enable);
 void DEBUG_LogLevelSet(uint8_t level);

@@ -1,6 +1,4 @@
 #include "modbus.h"
-#include <include/projdefs.h>
-// Based on FreeRTOS
 
 // Private variables and function prototypes 
 
@@ -63,7 +61,6 @@ gsg_result_t MB_startPort(modbus_port_t * port)
     //     return GSG_ERROR;
 
 
-    return GSG_ERROR;
     #if (MODBUS_MASTER_MODE == ENABLED)
         if(port->mode == MODBUS_MODE_MASTER)
         {
@@ -77,22 +74,25 @@ gsg_result_t MB_startPort(modbus_port_t * port)
 		 	port->configRqstQueHandle = xQueueCreate(MODBUS_CONFIG_REQUEST_QUEUE_LENGTH, sizeof(mb_config_request_t));
 		 	DEBUG_ASSERT(port->configRqstQueHandle != NULL);
 
-			// Start periodic query timer and save the handle
-//			port->queryTimerHandle = xTimerCreate("MBMQT",
-//                 pdMS_TO_TICKS(100),
-//                 pdTRUE,
-//				 (void *) port,
-//                 mbMasterQueryTimerHandler);
+			//Start periodic query timer and save the handle
+			port->queryTimerHandle = xTimerCreate("MBMQT",
+                 pdMS_TO_TICKS(100),
+                 pdTRUE,
+				 (void *) port,
+                 mbMasterQueryTimerHandler);
 
 			 DEBUG_ASSERT(port->queryTimerHandle != NULL);
 			 xTimerStart(port->queryTimerHandle, 0);
         }
     #endif
 
+     port->eventGroup = xEventGroupCreate();
+     DEBUG_ASSERT(port->eventGroup != NULL);
+
     // Start Modbus task
     if(port->mode == MODBUS_MODE_MASTER)
     {
-         xTaskCreate(modbusMasterTaskHandler,
+    	xTaskCreate(modbusMasterTaskHandler,
              "MBMTask",
              MODBUS_TASK_STACK_SIZE,
              port,
@@ -101,15 +101,14 @@ gsg_result_t MB_startPort(modbus_port_t * port)
     }
     else if(port->mode == MODBUS_MODE_SLAVE)
     {
-        xTaskCreate(modbusSlaveTaskHandler, 
+    	xTaskCreate(modbusSlaveTaskHandler,
             "MBSTask", 
             MODBUS_TASK_STACK_SIZE, 
             port, 
             MODBUS_TASK_PRIORITY, 
             &port->taskHandle);
     }
-    
-     DEBUG_ASSERT(port->taskHandle != NULL);
+    DEBUG_ASSERT(port->taskHandle != NULL);
     return GSG_SUCCESS;
 }
 

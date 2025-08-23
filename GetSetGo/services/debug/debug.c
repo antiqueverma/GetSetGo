@@ -16,6 +16,7 @@ static TaskHandle_t              debugTaskHandle = NULL;
 static debugTxCallback_t    debugTxCallbacks[_DEBUG_CHANNEL_MAX] = {0};
 static uint64_t             debugTagMask; // All enabled by default
 static uint8_t              debugLevelMax;
+uint16_t                    DEBUG_command;
 static debug_channel_t      debugChannel = DEBUG_CHANNEL_DEFAULT;
 #define DEBUG_LOG_ENABLE(tagId)     (debugTagMask |=  (1UL << (tagId)))
 #define DEBUG_LOG_DISABLE(tagId)    (debugTagMask &= ~(1UL << (tagId)))
@@ -29,9 +30,13 @@ void DEBUG_Init( void )
 {
    debugLevelMax = DEBUG_LEVEL_VERBOSE;
    debugTagMask = UINT64_MAX;
-   debugTaskHandle = xTaskCreate(debugTask, "DBG", 
+   xTaskCreate(debugTask, "DBG",
             DEBUG_TASK_STACK_SIZE, NULL, 
             DEBUG_TASK_PRIORITY, &debugTaskHandle);
+    if (debugTaskHandle == NULL)    // We cant assert here because our assert works on debug module itself
+    {
+        for(;;);
+    }
 }
 void DEBUG_Log_Switch(debugTagId_t tag, bool enable)
 {

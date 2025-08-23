@@ -155,8 +155,6 @@ void MB_phyRxByteISRCallback(modbus_phy_t phy, uint8_t byte)
     if (ctx->rxQueueHandle == NULL)
         return;
 
-//    ctx->lastRxByteTime = xTaskGetTickCount();
-
     // Directly push the byte data into queue
     if(xQueueSendFromISR(ctx->rxQueueHandle, &byte, NULL) != pdTRUE)
     {
@@ -166,16 +164,16 @@ void MB_phyRxByteISRCallback(modbus_phy_t phy, uint8_t byte)
 
 gsg_result_t MB_registerPhyRxContext(modbus_phy_t phy, modbus_port_t *port, mbPhyRxCbContext_t *context)
 {
-    if (phy >= _MODBUS_PHY_MAX || context == NULL || port == NULL)
-        return GSG_INVALID_ARG;
+    DEBUG_ASSERT(phy < _MODBUS_PHY_MAX);
+    DEBUG_ASSERT(context != NULL);
+    DEBUG_ASSERT(port != NULL);
 
     // Register the Rx context for the specified physical layer
     mbPhyRxCbContext[phy] = context;
 
     // Initialize the Rx queue for this phy channel
     context->rxQueueHandle = xQueueCreate(MODBUS_PORT_RX_BUFFER_SIZE, sizeof(uint8_t));
-    if (context->rxQueueHandle == NULL)
-        return GSG_ERROR; // Failed to create message queue
+    DEBUG_ASSERT(context->rxQueueHandle != NULL);
 
     context->lastRxByteTime = 0;
 

@@ -169,9 +169,6 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
                 }
                 *(uint16_t *)reg->value = newValue;
 
-//                sprintf(hex, "#U16=%d,%d", *(uint16_t *)reg->value, newValue);
-//                DEBUG_LOGD(DEBUG_TAG_COMM,"MB", hex);
-
                 frame += sizeof(uint16_t); // Move buffer pointer by 2bytes for next register
                 break;
             }
@@ -262,7 +259,6 @@ modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType,
     {
         return GSG_ERROR_NULL_POINTER;
     }
-    // DEBUG_LOGI(DEBUG_TAG_COMM,"MB", "#B");
 
     modbus_register_t *table = NULL;
     if(queryType == MB_QUERY_READ_HOLDING_REGISTERS || queryType == MB_QUERY_WRITE_HOLDING_REGISTERS)
@@ -340,7 +336,6 @@ modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType,
             }
             case MB_REG_TYP_UINT16:
             {   
-                // DEBUG_LOGI(DEBUG_TAG_COMM,"MB", "#C");
                 uint16_t val = *(uint16_t *)reg->value;
                 modbus_write_u16(frame, val);
                 frame += sizeof(uint16_t);
