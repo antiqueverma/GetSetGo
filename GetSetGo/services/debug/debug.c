@@ -16,7 +16,6 @@ static TaskHandle_t              debugTaskHandle = NULL;
 static debugTxCallback_t    debugTxCallbacks[_DEBUG_CHANNEL_MAX] = {0};
 static uint64_t             debugTagMask; // All enabled by default
 static uint8_t              debugLevelMax;
-uint16_t                    DEBUG_command;
 static debug_channel_t      debugChannel = DEBUG_CHANNEL_DEFAULT;
 #define DEBUG_LOG_ENABLE(tagId)     (debugTagMask |=  (1UL << (tagId)))
 #define DEBUG_LOG_DISABLE(tagId)    (debugTagMask &= ~(1UL << (tagId)))

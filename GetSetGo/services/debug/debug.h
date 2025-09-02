@@ -35,6 +35,7 @@ typedef enum {
 
    // GSG MODULES
    DEBUG_TAG_MODBUS,
+   DEBUG_TAG_ESP,
    DEBUG_TAG_ASSERT,
    _DEBUG_TAG_MAX
 } debugTagId_t;

@@ -180,7 +180,6 @@ modbus_error_t mbRxFrameParse(modbus_port_t *port, uint8_t slaveId, modbus_func_
             break;
         case MB_FUNC_READ_HOLDING_REGISTERS:
         {
-            // DEBUG_LOGI(DEBUG_TAG_MODBUS, "MB", "Read Holding Registers ");
             mb_regWrite(slave, 
                 MB_QUERY_READ_HOLDING_REGISTERS,
                 address, 
@@ -191,8 +190,6 @@ modbus_error_t mbRxFrameParse(modbus_port_t *port, uint8_t slaveId, modbus_func_
         case MB_FUNC_WRITE_SINGLE_REGISTER:
         case MB_FUNC_WRITE_MULTIPLE_REGISTERS:
         {   
-            // DEBUG_LOGI(DEBUG_TAG_MODBUS, "MB", "Write Holding Registers ");
-            // Handle write register response
             break;
         }
         default:

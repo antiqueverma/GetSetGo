@@ -124,6 +124,7 @@ typedef struct {
     uint8_t upperByte:1; // Upper byte for 16-bit registers
     uint8_t read:1; 
     uint8_t write:1;
+
     uint8_t notify:1;
     uint8_t persistent:1; // Register value is stored in EEPROM
     uint8_t validate:1; // Validate the register value
@@ -184,11 +185,11 @@ typedef enum{
 
 typedef struct {
     void               *value;          // Value of the register
-    modbus_reg_type_t   data_type; // Data type of the register
-    int32_t            min_value;      // Minimum value of the register
-    int32_t            max_value;      // Maximum value of the register
-    uint32_t            eeprom_address; // EEPROM address for persistent storage
+    uint16_t            min_value;      // Minimum value of the register
+    uint16_t            max_value;      // Maximum value of the register
+    uint8_t   			data_type; // Data type of the register
     modbus_reg_flags_t  flags; // Flags for the register
+//    uint32_t            eeprom_address; // EEPROM address for persistent storage
 } modbus_register_t;
 
 typedef struct{
@@ -238,11 +239,18 @@ typedef struct{
     mb_cfg_rqst_type_t rqstType;
 } mb_config_request_t;
 
+typedef struct{
+    mb_query_type_t queryType;
+    uint16_t regAddress;
+    uint8_t regCount;
+} modbus_slave_event_t;
+
 typedef struct {
 
     uint8_t                             id; // Slave ID
     modbus_slave_info_flags_t           status; // Slave status
     modbus_phy_t                        phy;
+    QueueHandle_t                       eventQueueHandle;
 
     #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == 0)
         modbus_register_t * holdingRegisters; // Pointer to the holding register table
@@ -347,7 +355,12 @@ gsg_result_t MB_unregisterPhyRxContext(modbus_phy_t phy, modbus_port_t *port);
 // Master mode API
 gsg_result_t MB_masterRegisterQuery(modbus_port_t *port, mb_master_query_t *query);
 gsg_result_t MB_masterUnregisterQuery(modbus_port_t *port, mb_master_query_t *query);
-gsg_result_t MB_masterRegisterSlave(modbus_port_t *port, modbus_slave_info_t * slave );
+gsg_result_t MB_masterRegisterSlave(modbus_port_t *port, modbus_slave_info_t * slave, uint8_t maxEvents );
+
+
+// App API
+gsg_result_t MB_getSlaveEvent(modbus_port_t * port, uint8_t slaveId, modbus_slave_event_t *event, TickType_t waitTimeTicks);
+
 
 
 #endif /* MODBUS_H_ */

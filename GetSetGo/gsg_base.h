@@ -1,14 +1,6 @@
 #ifndef GSG_BASE_H_
 #define GSG_BASE_H_
 
-// standard includes
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 // 📏 GSG-Wide Constants and Macros
 #include "gsg_defs.h"
 
@@ -27,14 +19,24 @@
   #include "semphr.h"
   #include "queue.h"
   #include "timers.h"
+#include "event_groups.h"
 #elif (GSG_OS_USED == GSG_OS_CMSIS_V2)
-
+  #error "NO CMSIS V2 SUPPORT"
 #endif
 
+#if (GSG_USE_HAL_BINDING == GSG_ENABLE)
+	#if (GSG_MCU_FAMILY == GSG_MCU_STM32)
+  	  #include "stm32f4xx_hal.h"
+	#endif
+#endif
 
 // 📦 Conditionally Include Enabled Modules
 #if GSG_USE_GPIO
   #include "gpio.h"
+#endif
+
+#if GSG_USE_SERIAL == GSG_ENABLE
+  #include "services/serial/serial.h"
 #endif
 
 #if GSG_USE_DEBUG == GSG_ENABLE
@@ -55,10 +57,6 @@
 
 #if GSG_USE_NVM == GSG_ENABLE
   #include "nvm.h"
-#endif
-
-#if GSG_USE_SERIAL == GSG_ENABLE
-  #include "serial.h"
 #endif
 
 #if GSG_USE_WDT == GSG_ENABLE
@@ -117,8 +115,18 @@
   #include "rf433.h"
 #endif
 
-#if GSG_USE_RS485 == GSG_ENABLE
-  #include "rs485.h"
+#if GSG_USE_SYSINFO == GSG_ENABLE
+  #include "utilities/sysinfo.h"
+#endif
+
+#if GSG_USE_ESP8266 == GSG_ENABLE
+  #include "connectivity/esp8266/esp8266.h"
+#endif
+
+#if (GSG_USE_HAL_BINDING == GSG_ENABLE)
+	#if (GSG_MCU_FAMILY == GSG_MCU_STM32)
+  	  #include "halbindstm32.h"
+	#endif
 #endif
 
 // Add more module includes as needed...

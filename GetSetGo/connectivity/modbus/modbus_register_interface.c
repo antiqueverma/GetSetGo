@@ -1,7 +1,7 @@
 
 #include "modbus.h"
 
-void mb_notifyRegisterAccess(uint16_t regAddress, mb_query_type_t queryType);
+void mb_notifyRegisterAccess(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress);
 modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress, uint8_t regCount, uint8_t *value);
 modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress, uint8_t regCount, uint8_t *value);
 
@@ -246,7 +246,7 @@ modbus_error_t mb_regWrite(modbus_slave_info_t *slave, mb_query_type_t queryType
         // If the register has a notification flag, trigger a notification
         if (reg->flags.notify)
         {
-            mb_notifyRegisterAccess(baseIndex, queryType);
+            mb_notifyRegisterAccess(slave, queryType, regAddress);
         }
     }
 
@@ -367,8 +367,8 @@ modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType,
             case MB_REG_TYP_STRING:
             {
                 // Manually copy two bytes
-                frame[0] = *((uint8_t *)reg->value);
-                frame[1] = *((uint8_t *)reg->value + 1);
+                frame[1] = *((uint8_t *)reg->value);
+                frame[0] = *((uint8_t *)reg->value + 1);
                 frame += sizeof(uint16_t); // Move pointer for next register
                 break;
             }
@@ -383,16 +383,21 @@ modbus_error_t mb_regRead(modbus_slave_info_t *slave, mb_query_type_t queryType,
         // If the register has a notification flag, trigger a notification
         if (reg->flags.notify)
         {
-            mb_notifyRegisterAccess(baseIndex, queryType);
+        	mb_notifyRegisterAccess(slave, queryType, regAddress);
         }
     }
 
     return result; // Success
 }
 
-void mb_notifyRegisterAccess(uint16_t regAddress, mb_query_type_t queryType)
+void mb_notifyRegisterAccess(modbus_slave_info_t *slave, mb_query_type_t queryType, uint16_t regAddress)
 {
-    ;
+    if(slave == NULL || slave->eventQueueHandle == NULL)
+        return;
+    modbus_slave_event_t event;
+    event.queryType     = queryType;
+    event.regAddress    = regAddress;
+    xQueueSend(slave->eventQueueHandle, &event, 0);
 }
 
 

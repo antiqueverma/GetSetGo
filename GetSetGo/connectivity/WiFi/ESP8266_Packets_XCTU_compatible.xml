@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<data>
+  <loop>false</loop>
+  <repeat_times>1</repeat_times>
+  <repeat_period>500</repeat_period>
+  <packets_list>
+    <packet name="packet_AT_RST">
+      <payload>41542B5253540D0A</payload>
+    </packet>
+    <packet name="packet_AT">
+      <payload>41540D0A</payload>
+    </packet>
+    <packet name="packet_ATE0">
+      <payload>415445300D0A</payload>
+    </packet>
+    <packet name="packet_AT_CWMODE_CUR">
+      <payload>41542B43574D4F44455F4355523F0D0A</payload>
+    </packet>
+    <packet name="packet_AT_CWMODE_CUR_SET">
+      <payload>41542B43574D4F44455F4355523D310D0A</payload>
+    </packet>
+    <packet name="packet_AT_CWJAP_CUR">
+      <payload>41542B43574A41505F4355523D224B6170696C206465762031393630222C22616E746971756531393630220D0A</payload>
+    </packet>
+    <packet name="packet_AT_CIPSTA_CUR">
+      <payload>41542B4349505354415F4355523F0D0A</payload>
+    </packet>
+    <packet name="packet_AT_CIPSTART">
+      <payload>41542B43495053544152543D22554450222C223139322E3136382E312E3430222C363030302C35303030302C300D0A</payload>
+    </packet>
+    <packet name="packet_AT_CIPMODE">
+      <payload>41542B4349504D4F44453D310D0A</payload>
+    </packet>
+    <packet name="packet_AT_CIPSEND">
+      <payload>41542B43495053454E440D0A</payload>
+    </packet>
+    <packet name="packet_AT_CWHOSTNAME">
+      <payload>41542B4357484F53544E414D453D22455350203420526E44220D0A</payload>
+    </packet>
+    <packet name="packet_AT_CWLIF">
+      <payload>41542B43574C49460D0A</payload>
+    </packet>
+    <packet name="packet_AT_CIPSERVER">
+      <payload>41542B4349505345525645523D</payload>
+    </packet>
+    <packet name="packet_AT_CIPMUX">
+      <payload>41542B4349504D55583D300D0A</payload>
+    </packet>
+    <packet name="packet_AT_CIPDINFO">
+      <payload>41542B43495044494E464F3D</payload>
+    </packet>
+    <packet name="packet_AT_CIPSTO">
+      <payload>41542B43495053544F3D</payload>
+    </packet>
+    <packet name="packet_AT_CIPSTATUS">
+      <payload>41542B4349505354415455530D0A</payload>
+    </packet>
+    <packet name="packet_AT_CIPRECVDATA">
+      <payload>41542B43495052454356444154413D</payload>
+    </packet>
+    <packet name="packet_AT_CIPSSL">
+      <payload>41542B43495053534C3D</payload>
+    </packet>
+    <packet name="packet_AT_CWQAP">
+      <payload>41542B43575141500D0A</payload>
+    </packet>
+    <packet name="packet_AT_PING">
+      <payload>41542B50494E473D</payload>
+    </packet>
+    <packet name="packet_AT_CIFSR">
+      <payload>41542B43494653520D0A</payload>
+    </packet>
+    <packet name="packet_AT_CIPSHUT">
+      <payload>41542B434950534855540D0A</payload>
+    </packet>
+    <packet name="packet_AT_CWLAP">
+      <payload>41542B43574C41500D0A</payload>
+    </packet>
+    <packet name="packet_AT_MDNS">
+      <payload>41542B4D444E533D</payload>
+    </packet>
+    <packet name="packet_AT_GMR">
+      <payload>41542B474D520D0A</payload>
+    </packet>
+    <packet name="packet_AT_MQTTUSERCFG">
+      <payload>41542B4D515454555345524346473D</payload>
+    </packet>
+    <packet name="packet_AT_MQTTCONN">
+      <payload>41542B4D515454434F4E4E3D</payload>
+    </packet>
+    <packet name="packet_AT_MQTTPUB">
+      <payload>41542B4D5154545055423D</payload>
+    </packet>
+    <packet name="packet_AT_MQTTDISCONN">
+      <payload>41542B4D515454444953434F4E4E0D0A</payload>
+    </packet>
+    <packet name="packet_AT_Test">
+      <payload>41542B3F0D0A</payload>
+    </packet>
+  </packets_list>
+</data>

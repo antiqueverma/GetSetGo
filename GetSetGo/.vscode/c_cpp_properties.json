@@ -3,7 +3,9 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "D:/Embedded/GetSetGo/GetSetGo/**",
+                "D:/Embedded/HomeAutomation/ThirdParty/FreeRTOS/**"
             ],
             "defines": [
                 "_DEBUG",

@@ -10,6 +10,7 @@ void mbMasterQueryTimerHandler( TimerHandle_t xTimer );
 void modbusMasterTaskHandler(void * argument);
 void modbusSlaveTaskHandler(void * argument);
 
+modbus_slave_info_t *mbGetSlaveInfo(modbus_port_t *port, uint8_t slaveId);
 
 gsg_result_t MB_createPortStatic(modbus_port_t * port)
 {
@@ -137,3 +138,18 @@ gsg_result_t MB_destroyPort(modbus_port_t * port)
     return GSG_SUCCESS;
 }
 
+
+gsg_result_t MB_getSlaveEvent(modbus_port_t * port, uint8_t slaveId, modbus_slave_event_t *event, TickType_t waitTimeTicks)
+{
+	modbus_slave_info_t *slave = NULL;
+    slave = mbGetSlaveInfo(port, slaveId);
+    DEBUG_ASSERT(slave != NULL);
+    DEBUG_ASSERT(slave->eventQueueHandle != NULL);
+    
+    if (xQueueReceive(slave->eventQueueHandle, event, waitTimeTicks) == pdPASS)
+    {
+        return GSG_SUCCESS;
+    }
+
+    return GSG_TIMEOUT;
+}

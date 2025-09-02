@@ -1,6 +1,32 @@
 #ifndef GSG_DEFS_H_
 #define GSG_DEFS_H_
 
+// standard includes
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Common Constants
+#define PASS        1
+//#define SUCCESS     1
+#define FAIL        0
+#define TRUE        1
+#define FALSE       0
+#define VALID       1
+#define INVALID     0
+
+
+#define ENABLED     1
+#define DISABLED    0
+
+#define ON          1
+#define OFF         0
+#define YES         1
+#define NO          0
+
 // Memory Size Converters
 #define KB_to_B(kbs)		(1024 * kbs)
 #define MB_to_B(mbs)		(1024 * KB_to_B(mbs))
@@ -8,23 +34,6 @@
 // Time Constants (generic tick-based systems)
 #define SEC_to_MS(sec)      ((sec) * 1000UL)
 #define MS_to_SEC(ms)       ((ms) / 1000UL)
-
-// Common Constants
-#define PASS        1
-#define SUCCESS     1
-#define FAIL        0
-#define TRUE        1
-#define FALSE       0
-#define VALID       1
-#define INVALID     0
-#define ENABLED     1
-#define DISABLED    0
-#define SET         1
-#define RESET       0
-#define ON          1
-#define OFF         0
-#define YES         1
-#define NO          0
 
 // Character Constants
 #define CHAR_CR             '\r'
@@ -35,15 +44,10 @@
 
 // Bit Manipulation Macros
 #define BIT_MASK(n)         (1U << (n))
-#ifndef SET_BIT
-  #define SET_BIT(x, n)     ((x) |= BIT_MASK(n))
-#endif
-#ifndef RESET_BIT
-  #define RESET_BIT(x, n)   ((x) &= ~BIT_MASK(n))
-#endif
-
-#define TOG_BIT(x, n)       ((x) ^= BIT_MASK(n))
-#define GET_BIT(x, n)       (((x) >> (n)) & 1U)
+#define SET_BIT_(x, n)     ((x) |= BIT_MASK(n))
+#define RESET_BIT_(x, n)   ((x) &= ~BIT_MASK(n))
+#define TOG_BIT_(x, n)     ((x) ^= BIT_MASK(n))
+#define GET_BIT_(x, n)     (((x) >> (n)) & 1U)
 
 // Loop Helpers
 #define FOREVER             for(;;)

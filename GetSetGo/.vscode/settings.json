@@ -7,6 +7,12 @@
         "stdint.h": "c",
         "stream.h": "c",
         "modbus_master.h": "c",
-        "modbus.h": "c"
+        "modbus.h": "c",
+        "esp8266.h": "c",
+        "esp_at_internal.h": "c",
+        "serial.h": "c",
+        "esp8266int.h": "c",
+        "stdbool.h": "c",
+        "semphr.h": "c"
     }
 }

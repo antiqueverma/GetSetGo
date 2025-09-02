@@ -56,12 +56,13 @@ gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size)
     if (data == NULL || size == 0)
         return GSG_INVALID_ARG;
         
-    uint8_t phy = MODBUS_PHY_NONE;
-    if (port->slave[data[0]] != NULL)
-        phy = port->slave[data[0]]->phy;
+    uint8_t phy = port->phy;//MODBUS_PHY_NONE;
+//    if (port->slave[data[0]] != NULL)
+//        phy = port->slave[data[0]]->phy;
+
     if(modbusPhyTxCallbacks[phy] == NULL)
     {
-//        DEBUG_LOGI(DEBUG_TAG_COMM,"MB", "Slave-TxCb == NULL, using port's default");
+        DEBUG_LOGD(DEBUG_TAG_MODBUS,"MBM", "Slave-TxCb == NULL, using port's default");
         phy = port->phy;
     }
 
@@ -198,7 +199,7 @@ gsg_result_t MB_unregisterPhyRxContext(modbus_phy_t phy, modbus_port_t *port)
     // Delete the Rx queue for this phy channel
     if (port->rxCtx[phy] != NULL && port->rxCtx[phy]->rxQueueHandle != NULL)
     {
-        osMessageQueueDelete(port->rxCtx[phy]->rxQueueHandle);
+    	vQueueDelete(port->rxCtx[phy]->rxQueueHandle);
         port->rxCtx[phy]->rxQueueHandle = NULL;
     }
 

@@ -237,7 +237,7 @@ void modbusMasterTaskHandler(void * argument)
 
 
 // create master event group
-gsg_result_t MB_masterRegisterSlave(modbus_port_t *port, modbus_slave_info_t * slave )
+gsg_result_t MB_masterRegisterSlave(modbus_port_t *port, modbus_slave_info_t * slave, uint8_t maxEvents )
 {
     uint8_t i = 0;
 
@@ -264,6 +264,9 @@ gsg_result_t MB_masterRegisterSlave(modbus_port_t *port, modbus_slave_info_t * s
     // Register the new slave information
     port->slave[i]->status.connected            = 0; // Initialize status to 0
     
+    if(maxEvents && (port->slave[i]->eventQueueHandle == NULL))
+        port->slave[i]->eventQueueHandle = xQueueCreate(maxEvents, sizeof(modbus_slave_event_t));
+
     #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == DISABLED)
 
         if(slave->holdingRegistersCount == 0)
@@ -303,6 +306,13 @@ gsg_result_t MB_masterUnregisterSlave(modbus_port_t *port, uint8_t slaveId )
 
         if (port->slave[i]->id == slaveId)
         {
+            // Delete event queue for the slave
+            if (port->slave[i]->eventQueueHandle != NULL)
+            {
+                vQueueDelete(port->slave[i]->eventQueueHandle);
+                port->slave[i]->eventQueueHandle = NULL;
+            }
+            
             port->slave[i] = NULL;
             #if (MODBUS_MASTER_USE_UNIFIED_REGISTER_MAP == DISABLED)
                 ;
@@ -482,7 +492,7 @@ gsg_result_t MB_masterRegisterQuery(modbus_port_t *port, mb_master_query_t *quer
         TaskHandle_t callingTask = xTaskGetCurrentTaskHandle();
         task = pcTaskGetName(callingTask);
         sprintf(hex, "[%s]CfgQueFull_r", task);
-        DEBUG_LOGI(DEBUG_TAG_MODBUS,"MBM",hex);
+        DEBUG_LOGE(DEBUG_TAG_MODBUS,"MBM",hex);
 
         return GSG_OVERFLOW; // No space
     }
@@ -502,7 +512,7 @@ gsg_result_t MB_masterUnregisterQuery(modbus_port_t *port, mb_master_query_t *qu
         TaskHandle_t callingTask = xTaskGetCurrentTaskHandle();
         task = pcTaskGetName(callingTask);
 
-        DEBUG_LOGI(DEBUG_TAG_MODBUS,task,"Modbus new request queue full [uq]");
+        DEBUG_LOGE(DEBUG_TAG_MODBUS,task,"Modbus new request queue full [uq]");
 
         return GSG_OVERFLOW; // No space
     }
