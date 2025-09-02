@@ -123,11 +123,11 @@
   #include "connectivity/esp8266/esp8266.h"
 #endif
 
-#if (GSG_USE_HAL_BINDING == GSG_ENABLE)
-	#if (GSG_MCU_FAMILY == GSG_MCU_STM32)
-  	  #include "halbindstm32.h"
-	#endif
-#endif
+//#if (GSG_USE_HAL_BINDING == GSG_ENABLE)
+//	#if (GSG_MCU_FAMILY == GSG_MCU_STM32)
+//  	  #include "halbindstm32.h"
+//	#endif
+//#endif
 
 // Add more module includes as needed...
 

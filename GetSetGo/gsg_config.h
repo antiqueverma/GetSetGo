@@ -35,7 +35,7 @@
 #define GSG_USE_STREAM		GSG_DISABLE
 #define GSG_USE_IO          GSG_DISABLE
 #define GSG_USE_NVM         GSG_DISABLE
-#define GSG_USE_SERIAL      GSG_DISABLE
+#define GSG_USE_SERIAL      GSG_ENABLE
 #define GSG_USE_STREAM      GSG_DISABLE
 #define GSG_USE_WDT         GSG_DISABLE
 
@@ -48,11 +48,11 @@
 #define GSG_USE_TIME        GSG_DISABLE
 #define GSG_USE_WAVEGEN     GSG_DISABLE  
 
-#define GSG_USE_HAL_BINDING  GSG_DISABLE
+#define GSG_USE_HAL_BINDING GSG_ENABLE
 
 #if (GSG_USE_HAL_BINDING == GSG_ENABLE)
     // #define HAL_USE_UART0
-    // #define HAL_USE_UART1
+     #define HAL_USE_UART1
     // #define HAL_USE_UART2
     #define HAL_USE_UART3
     // #define HAL_USE_UART4

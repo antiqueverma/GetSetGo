@@ -11,7 +11,7 @@ typedef enum {
 	SERIAL_PORT_ERROR
 } serial_port_state_t;
 
-typedef enum{
+typedef enum {
 	SER_EVT_RX_DATA_READY	= (1<<0),
 	SER_EVT_TX_COMPLETE		= (1<<1),
 	SER_EVT_TERMINATOR_RCVD	= (1<<2)
@@ -36,7 +36,5 @@ uint16_t SER_getRxData(serialPort_t *port, uint8_t *data, uint16_t length);
 void SER_sendTxdata(serialPort_t *port, uint8_t *data, uint16_t length, uint16_t timeout);
 void SER_flushRxBuffer(serialPort_t *port);
 void SER_flushTxBuffer(serialPort_t *port);
-
-
 
 #endif

@@ -1,16 +1,14 @@
 
 #include "serial.h"
 
-gsg_result_t SER_openPort( serialPort_t *port,
-    uint16_t txBuffSize, serial_tx_fn_t tx_fn,
-    uint16_t rxBuffSize)
+gsg_result_t SER_openPort( serialPort_t *port, uint16_t txBuffSize, serial_tx_fn_t tx_fn, uint16_t rxBuffSize)
 {
     DEBUG_ASSERT(port != NULL);
     if(txBuffSize > 0 )
     {
         port->txQueue = xQueueCreate(txBuffSize, sizeof(uint8_t));
     }
-	    
+
     if(rxBuffSize > 0 )
     {
         port->rxQueue = xQueueCreate(rxBuffSize, sizeof(uint8_t));
@@ -24,7 +22,7 @@ gsg_result_t SER_openPort( serialPort_t *port,
 gsg_result_t SER_closePort(serialPort_t *port)
 {
     DEBUG_ASSERT(port != NULL);
-    
+
     if (port->rxQueue != NULL)
     {
         vQueueDelete(port->rxQueue);
@@ -50,8 +48,8 @@ void SER_rxByteISRcb(serialPort_t *port, uint8_t byteReceived)
 // Function to be called from Application to get n bytes from serial rx buffer
 uint16_t SER_getRxData(serialPort_t *port, uint8_t *data, uint16_t length)
 {
-    DEBUG_ASSERT(port != NULL); 
-    DEBUG_ASSERT(data != NULL); 
+    DEBUG_ASSERT(port != NULL);
+    DEBUG_ASSERT(data != NULL);
     DEBUG_ASSERT(length != 0);
 
     port->state = SERIAL_PORT_RECEIVING;
@@ -71,8 +69,8 @@ uint16_t SER_getRxData(serialPort_t *port, uint8_t *data, uint16_t length)
 // Function to be called from Application to send n bytes
 void SER_sendTxdata(serialPort_t *port, uint8_t *data, uint16_t length, uint16_t timeout)
 {
-    DEBUG_ASSERT(port != NULL); 
-    DEBUG_ASSERT(data != NULL); 
+    DEBUG_ASSERT(port != NULL);
+    DEBUG_ASSERT(data != NULL);
     DEBUG_ASSERT(length != 0);
 
     port->state = SERIAL_PORT_SENDING;
@@ -107,3 +105,37 @@ void SER_flushTxBuffer(serialPort_t *port)
         xQueueReset(port->txQueue);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
