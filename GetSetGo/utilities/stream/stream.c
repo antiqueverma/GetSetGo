@@ -1,3 +1,5 @@
+#include "gsg_config.h"
+#if (defined(GSG_USE_STREAM) && (GSG_USE_STREAM == GSG_ENABLE))
 
 #include "stream.h"
 
@@ -157,3 +159,5 @@ void Stream_setTxCallback(streamTxCallback_t callback)
         return;
     streamTxCallback = callback;
 }
+
+#endif

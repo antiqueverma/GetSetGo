@@ -1,9 +1,18 @@
+/*
+ * esp8266.h
+ *
+ *  Created on: Sep 2, 2025
+ *      Author: antiq
+ */
+
 
 
 #ifndef ESP8266_H_
 #define ESP8266_H_
 
-#include "gsg_base.h"
+#include "gsg_defs.h"
+#include "services/serial/serial.h"
+#include "services/debug/debug.h"
 
 #define ESP_TASK_PRIORITY 	10
 #define ESP_TASK_STACK_SIZE	KB_to_B(2)
@@ -40,7 +49,9 @@ typedef struct{
 
 } esp_socket_t;
 
-void ESP_Init(serialPort_t  *serialPort);
+
+void ESP_Init(serial_port_t  *serialPort);
 
 
 #endif /* ESP8266_H_ */
+

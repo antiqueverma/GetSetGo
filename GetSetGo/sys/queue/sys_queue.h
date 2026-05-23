@@ -1,5 +1,6 @@
 
-
+#include "gsg_config.h"
+#if (defined(GSG_USE_QUEUE) && (GSG_USE_QUEUE == GSG_ENABLE))
 #ifndef GSG_QUEUE_H_
 #define GSG_QUEUE_H_
 

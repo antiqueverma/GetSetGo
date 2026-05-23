@@ -5,10 +5,12 @@
  *      Author: antiq
  */
 
+#include	"gsg_config.h"
+
+#if (defined (GSG_USE_NVM) && (GSG_USE_NVM == GSG_DISABLE))
 #ifndef DRIVERS_NVM_H_
 #define DRIVERS_NVM_H_
 
-#include	"GetSetGoConfig.h"
 
 #define NVM_USE_BUFFER_POOL			0//1
 
@@ -106,3 +108,5 @@ void NVM_Init(void);
 //BaseType_t NVM_rqstDataWrite(uint16_t address, uint8_t data, TaskHandle_t task);
 
 #endif /* DRIVERS_NVM_H_ */
+
+#endif

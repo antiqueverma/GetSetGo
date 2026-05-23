@@ -1,9 +1,8 @@
 
 #ifndef CLI_H_
 #define CLI_H_
-#include "main.h"
-#include "debug.h"
-
+#include "gsg_defs.h"
+#include "services/debug/debug.h"
 
 #define CLI_TASK_PRIORITY       2
 #define CLI_TASK_STACK_SIZE     KB_2_B(3)

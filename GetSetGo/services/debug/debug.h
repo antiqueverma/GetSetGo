@@ -1,7 +1,11 @@
 #ifndef DEBUG_H_
 #define DEBUG_H_
 
-#include "gsg_base.h"
+#include "gsg_defs.h"
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "semphr.h"
+#include <stdarg.h>
 
 // Debugger Configs
 #define DEBUG_LOG_EN                1
@@ -10,7 +14,7 @@
 #define DEBUG_TX_BUFF_SIZE          KB_to_B(1)
 #define DEBUG_MSG_MAX_LEN           128
 #define DEBUG_TAG_EN                1
-#define DEBUG_TIMESTAMP_EN          1       // 0:Disable, 1:10ms, 2: 100ms, 3:1000ms 
+#define DEBUG_TIMESTAMP_EN          CONFIG_DEBUG_TIMESTAMP_ENABLE       // 0:Disable, 1:10ms, 2: 100ms, 3:1000ms 
 // Debugger Macros
 typedef enum {
    DEBUG_LEVEL_NONE,
@@ -54,16 +58,16 @@ typedef enum {
 
 #if DEBUG_LOG_EN
    // Debugger User-API
-   #define DEBUG_LOGE(id,tag,msg) \
-      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_ERR) { debugLog(id, 'E', tag, msg); }
-   #define DEBUG_LOGW(id,tag,msg) \
-      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_WARN) { debugLog(id, 'W', tag, msg); }
-   #define DEBUG_LOGI(id,tag,msg) \
-      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_INFO) { debugLog(id, 'I', tag, msg); }
-   #define DEBUG_LOGD(id,tag,msg) \
-      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG) { debugLog(id, 'D', tag, msg); }
-   #define DEBUG_LOGV(id,tag,msg) \
-      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_VERBOSE) { debugLog(id, 'V', tag, msg); }
+   #define DEBUG_LOGE(id,tag,...) \
+      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_ERR) { debugLog(id, 'E', tag, __VA_ARGS__); }
+   #define DEBUG_LOGW(id,tag,...) \
+      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_WARN) { debugLog(id, 'W', tag, __VA_ARGS__); }
+   #define DEBUG_LOGI(id,tag,...) \
+      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_INFO) { debugLog(id, 'I', tag, __VA_ARGS__); }
+   #define DEBUG_LOGD(id,tag,...) \
+      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG) { debugLog(id, 'D', tag, __VA_ARGS__); }
+   #define DEBUG_LOGV(id,tag,...) \
+      if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_VERBOSE) { debugLog(id, 'V', tag, __VA_ARGS__); }
 
    #define DEBUG_LOG_RAW(msg) \
       if (DEBUG_LogLevelGet() >= 0) { debugLogRaw(msg); }
@@ -102,10 +106,10 @@ void DEBUG_Init( void );
 void DEBUG_Log_Switch(debugTagId_t tag, bool enable);
 void DEBUG_LogLevelSet(uint8_t level);
 uint8_t DEBUG_LogLevelGet( void );
-void debugLog(debugTagId_t tagId, char level, char * tag, char * msg);
+void debugLog(debugTagId_t tagId, char level, char *tag, char *fmt, ...);
 void debugLogRaw(char * msg);
 gsg_result_t DEBUG_RegisterTxCallback(debug_channel_t channel, debugTxCallback_t cb);
-void DEBUG_setOutputChannel(uint8_t channel);
-uint8_t DEBUG_getOutputChannel(void);
+void DEBUG_setOutputChannel(debug_channel_t channel);
+debug_channel_t DEBUG_getOutputChannel(void);
 #endif
 

@@ -13,21 +13,6 @@
 // Drivers
 #define GSG_USE_GPIO		GSG_DISABLE
 
-// Connectivity
-#define GSG_USE_BLUETOOTH   GSG_DISABLE
-#define GSG_USE_ETHERNET    GSG_DISABLE
-#define GSG_USE_RF433       GSG_DISABLE
-#define GSG_USE_RS232       GSG_DISABLE
-#define GSG_USE_RS485       GSG_DISABLE
-#define GSG_USE_MODBUS		GSG_ENABLE
-#define GSG_USE_WIFI        GSG_DISABLE
-#define GSG_USE_ESP8266     GSG_DISABLE
-
-// Devices
-#define GSG_USE_LCD1602     GSG_DISABLE
-#define GSG_USE_LCD12864    GSG_DISABLE
-#define GSG_USE_RTC         GSG_DISABLE
-
 // Services
 #define GSG_USE_DEBUG		GSG_ENABLE
 #define GSG_USE_EVENT       GSG_DISABLE
@@ -38,13 +23,28 @@
 #define GSG_USE_SERIAL      GSG_ENABLE
 #define GSG_USE_STREAM      GSG_DISABLE
 #define GSG_USE_WDT         GSG_DISABLE
+#define GSG_USE_SVAR        GSG_DISABLE
+
+// Connectivity
+#define GSG_USE_BLUETOOTH   GSG_DISABLE
+#define GSG_USE_ETHERNET    GSG_DISABLE
+#define GSG_USE_RF433       GSG_DISABLE
+#define GSG_USE_RS232       GSG_DISABLE
+#define GSG_USE_RS485       GSG_DISABLE
+#define GSG_USE_MODBUS		GSG_ENABLE
+#define GSG_USE_WIFI        GSG_DISABLE
+#define GSG_USE_ESP8266     GSG_ENABLE
+
+// Devices
+#define GSG_USE_LCD1602     GSG_DISABLE
+#define GSG_USE_LCD12864    GSG_DISABLE
+#define GSG_USE_RTC         GSG_DISABLE
 
 // Utilities 
 #define GSG_USE_SYSINFO     GSG_ENABLE
 #define GSG_USE_QUEUE		GSG_DISABLE
 #define GSG_USE_CSV         GSG_DISABLE
 #define GSG_USE_DSP         GSG_DISABLE
-#define GSG_USE_SVAR        GSG_DISABLE
 #define GSG_USE_TIME        GSG_DISABLE
 #define GSG_USE_WAVEGEN     GSG_DISABLE  
 

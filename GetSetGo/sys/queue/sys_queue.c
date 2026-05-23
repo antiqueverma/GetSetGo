@@ -1,5 +1,6 @@
 
-
+#include "gsg_config.h"
+#if (defined(GSG_USE_QUEUE) && (GSG_USE_QUEUE == GSG_ENABLE))
 #include "sys_queue.h"
 
 /***************************
@@ -202,3 +203,4 @@ bool _QUE_Peek(gsg_queueObject_t *qObj, uint8_t *data, int16_t nth, int8_t dir)	
 
 	return PASS;
 }
+#endif

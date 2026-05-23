@@ -24,11 +24,11 @@
   #error "NO CMSIS V2 SUPPORT"
 #endif
 
-#if (GSG_USE_HAL_BINDING == GSG_ENABLE)
-	#if (GSG_MCU_FAMILY == GSG_MCU_STM32)
-  	  #include "stm32f4xx_hal.h"
-	#endif
-#endif
+//#if (GSG_USE_HAL_BINDING == GSG_ENABLE)
+//	#if (GSG_MCU_FAMILY == GSG_MCU_STM32)
+//
+//	#endif
+//#endif
 
 // 📦 Conditionally Include Enabled Modules
 #if GSG_USE_GPIO
@@ -55,71 +55,71 @@
   #include "queue.h"
 #endif
 
-#if GSG_USE_NVM == GSG_ENABLE
+#if (GSG_USE_NVM == GSG_ENABLE)
   #include "nvm.h"
 #endif
 
-#if GSG_USE_WDT == GSG_ENABLE
+#if (GSG_USE_WDT == GSG_ENABLE)
   #include "wdt.h"
 #endif
 
-#if GSG_USE_TIME == GSG_ENABLE
+#if (GSG_USE_TIME == GSG_ENABLE)
   #include "time.h"
 #endif
 
-#if GSG_USE_WAVEGEN == GSG_ENABLE
+#if (GSG_USE_WAVEGEN == GSG_ENABLE)
   #include "wavegen.h"
 #endif
 
-#if GSG_USE_CSV == GSG_ENABLE
+#if (GSG_USE_CSV == GSG_ENABLE)
   #include "csv.h"
 #endif
 
-#if GSG_USE_DSP == GSG_ENABLE
+#if (GSG_USE_DSP == GSG_ENABLE)
   #include "dsp.h"
 #endif
 
-#if GSG_USE_SVAR == GSG_ENABLE
-  #include "svar.h"
+#if (GSG_USE_SVAR == GSG_ENABLE)
+  #include "sys/svar/svar.h"
 #endif
 
-#if GSG_USE_EVENT == GSG_ENABLE
+#if (GSG_USE_EVENT == GSG_ENABLE)
   #include "event.h"
 #endif
 
-#if GSG_USE_FSLITE == GSG_ENABLE
+#if (GSG_USE_FSLITE == GSG_ENABLE)
   #include "fslite.h"
 #endif
 
-#if GSG_USE_IO == GSG_ENABLE
+#if (GSG_USE_IO == GSG_ENABLE)
   #include "io.h"
 #endif
 
-#if GSG_USE_MEMALLOC == GSG_ENABLE
+#if (GSG_USE_MEMALLOC == GSG_ENABLE)
   #include "memalloc.h"
 #endif
 
-#if GSG_USE_ETHERNET == GSG_ENABLE
+#if (GSG_USE_ETHERNET == GSG_ENABLE)
   #include "ethernet.h"
 #endif
 
-#if GSG_USE_WIFI == GSG_ENABLE
+#if (GSG_USE_WIFI == GSG_ENABLE)
   #include "wifi.h"
 #endif
 
-#if GSG_USE_BLUETOOTH == GSG_ENABLE
+#if (GSG_USE_BLUETOOTH == GSG_ENABLE)
   #include "bluetooth.h"
 #endif
 
-#if GSG_USE_RF433 == GSG_ENABLE
+#if (GSG_USE_RF433 == GSG_ENABLE)
   #include "rf433.h"
 #endif
 
-#if GSG_USE_SYSINFO == GSG_ENABLE
+#if (GSG_USE_SYSINFO == GSG_ENABLE)
   #include "utilities/sysinfo.h"
 #endif
 
-#if GSG_USE_ESP8266 == GSG_ENABLE
+#if (GSG_USE_ESP8266 == GSG_ENABLE)
   #include "connectivity/esp8266/esp8266.h"
 #endif
 
