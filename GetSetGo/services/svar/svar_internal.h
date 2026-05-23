@@ -3,7 +3,20 @@
 #define SVAR_INTERNAL_H_
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "FreeRTOS.h"
+#include "semphr.h"
 #include "gsg_defs.h"
+#include "sys/nvm/nvm.h"
+
+#include "gsg_config.h"
+
+#ifndef GSG_CONFIG_SVAR_MAX_MODULES
+#define SVAR_MAX_MODULES 5
+#warning "GSG_CONFIG_SVAR_MAX_MODULES is not defined, using default value of 5. Define GSG_CONFIG_SVAR_MAX_MODULES in gsg_config.h to override."
+#else
+#define SVAR_MAX_MODULES GSG_CONFIG_SVAR_MAX_MODULES
+#endif
 
 typedef enum {
     SVAR_TYPE_INT8,
@@ -116,6 +129,7 @@ typedef struct {
     const system_variable_t *table;
     const uint16_t count;
     const uint16_t varOffset;
+    nvm_device_t *nvmHandle;
 } svar_module_t;
 
 #endif /* SVAR_INTERNAL_H_ */

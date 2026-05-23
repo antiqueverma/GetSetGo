@@ -4,6 +4,8 @@
  *  Created on: May 1, 2023
  *      Author: antiq
  */
+
+#if 0
 #ifndef INC_NVM_CONFIG_H_
 #define INC_NVM_CONFIG_H_
 
@@ -45,3 +47,6 @@
 
 
 #endif /* INC_NVM_CONFIG_H_ */
+
+
+#endif

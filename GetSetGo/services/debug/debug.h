@@ -27,21 +27,18 @@ typedef enum {
 
 
 typedef enum {
-	DEBUG_TAG_RANDOM = 0,
-   
-   DEBUG_TAG_APP ,
-   DEBUG_TAG_BSP ,
-   DEBUG_TAG_MSP ,
-   DEBUG_TAG_COMM ,
-   DEBUG_TAG_SENSOR,
-   DEBUG_TAG_SD ,
-   DEBUG_TAG_UI ,
-
-   // GSG MODULES
+   DEBUG_TAG_DEFAULT = 0,
+   DEBUG_TAG_SVAR,
    DEBUG_TAG_MODBUS,
+   DEBUG_TAG_COMM,
+   DEBUG_TAG_SENSOR,
+   DEBUG_TAG_SD,
+   DEBUG_TAG_UI,
    DEBUG_TAG_ESP,
    DEBUG_TAG_ASSERT,
-   _DEBUG_TAG_MAX
+   DEBUG_TAG_BSP,
+   DEBUG_TAG_MSP,
+   DEBUG_TAG_APP  // This mst be the last entry
 } debugTagId_t;
 
 typedef enum {

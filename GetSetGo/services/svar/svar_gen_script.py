@@ -318,7 +318,7 @@ def create_app_header(data, output_dir, config_data=None, product_name='Default'
             f.write(f'#ifndef SVAR_{product_prefix}_H_\n')
             f.write(f'#define SVAR_{product_prefix}_H_\n')
             f.write('#include "gsg_config.h"\n')
-            f.write('#include "sys/svar/svar_internal.h"\n\n')
+            f.write('#include "services/svar/svar_internal.h"\n\n')
 
             f.write('/* Configurations */\n')
             # f.write('#define SVAR_MAX_VARIABLES      100\n')

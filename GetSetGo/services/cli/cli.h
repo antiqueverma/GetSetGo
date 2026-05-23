@@ -15,6 +15,7 @@
 
 // Type definitions
 typedef void (*cli_cmd_callback_t)(const char *args);
+
 typedef struct {
     char command[CLI_MODULE_NAME_SIZE+1];        // module name, e.g. "help"
     cli_cmd_callback_t callback;    // A callback function with standard signature

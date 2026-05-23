@@ -12,6 +12,8 @@
 //  #warning "GSG_OS_USED not defined, defaulting to GSG_OS_BARE_METAL"
 //#endif
 
+#include "port/stm32f407ve/port.h"
+
 // freeRTOS kernel includes
 #if (GSG_OS_USED == GSG_OS_FREERTOS)
   #include "FreeRTOS.h"
@@ -30,7 +32,12 @@
 //	#endif
 //#endif
 
-// 📦 Conditionally Include Enabled Modules
+#if GSG_USE_24CXX
+  #include "device/24cXX/eeprom.h"
+  #include "drv/stm32/I2C/i2c.h"
+#endif
+
+// Conditionally Include Enabled Modules
 #if GSG_USE_GPIO
   #include "gpio.h"
 #endif
@@ -56,7 +63,7 @@
 #endif
 
 #if (GSG_USE_NVM == GSG_ENABLE)
-  #include "nvm.h"
+  #include "sys/nvm/nvm.h"
 #endif
 
 #if (GSG_USE_WDT == GSG_ENABLE)
@@ -80,7 +87,7 @@
 #endif
 
 #if (GSG_USE_SVAR == GSG_ENABLE)
-  #include "sys/svar/svar.h"
+  #include "services/svar/svar.h"
 #endif
 
 #if (GSG_USE_EVENT == GSG_ENABLE)

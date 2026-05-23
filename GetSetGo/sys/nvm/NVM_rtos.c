@@ -7,19 +7,59 @@
 
 #include "NVM.h"
 
-//static char hex[100];
+#ifdef NVM_USE_DUMMY_NVM
+		static nvm_data_t NVM_DUMMY_MEMORY[NVM_SIZE];
+#endif
 
-uint8_t hexLength;
 static uint8_t moduleInit = 0;
 
-#if (GSG_USE_RTOS == 1)	//freeRTOS
+#if (GSG_OS_USED == GSG_OS_FREERTOS)
 	static QueueHandle_t rqstQueueHandle;
 	TaskHandle_t nvmTaskHandle;
 	static void nvmRqstHandlerTask(void *pvParameters);
 #endif
 
-bool NVM_Write_Cell(nvm_address_t Address, nvm_data_t Byte);
-bool NVM_Read_Cell(nvm_address_t Address, nvm_data_t *ptr);
+unsigned char writeCell(unsigned int Address, nvm_data_t Byte)
+{
+	if(Address >= NVM_Max_Valid_Address)
+			return FAIL;
+
+	#ifdef NVM_USE_DUMMY_NVM
+		NVM_DUMMY_MEMORY[Address] = Byte;
+	#endif
+
+	return PASS;
+}
+
+nvm_data_t readCell(unsigned int Address)
+{
+	unsigned int data = NVM_CELL_RST_VALUE;
+	if(Address >= NVM_Max_Valid_Address)
+			return data;
+
+	#ifdef NVM_USE_DUMMY_NVM
+		data = NVM_DUMMY_MEMORY[Address];
+	#endif
+
+	return data;
+}
+unsigned char NVM_Write_String(unsigned int Base_Address, nvm_data_t *String, unsigned char Length)
+{
+	unsigned int i=0;
+	if(Base_Address >= NVM_Max_Valid_Address)
+		return FAIL;
+
+	for(i=0;i<Length;i++)
+	{
+		#ifdef NVM_USE_DUMMY_NVM
+			NVM_DUMMY_MEMORY[Base_Address+i] = *(String+i);
+		#endif
+	}
+	return PASS;
+}
+
+bool writeCell(nvm_address_t Address, nvm_data_t Byte);
+bool readCell(nvm_address_t Address, nvm_data_t *ptr);
 uint8_t NVM_Write_Sequence(nvm_address_t Address, nvm_data_t *String, uint16_t Length);
 uint8_t NVM_Read_Sequence(nvm_address_t Address, nvm_data_t *String, uint16_t Length);
 
@@ -30,14 +70,13 @@ void NVM_Init(void)
 		memset(NVM_DUMMY_MEMORY,0xFF,sizeof(NVM_DUMMY_MEMORY));
 	#endif
 
-#if (GSG_USE_RTOS == 1)	//freeRTOS
+#if (GSG_OS_USED == GSG_OS_FREERTOS)
 	rqstQueueHandle = xQueueCreate( NVM_RQST_QUEUE_LENGTH , sizeof(nvm_rqst_t) );
 	configASSERT( xTaskCreate(nvmRqstHandlerTask, 	"NVM", 	2048, NULL, NVM_TASK_PRIORITY, &nvmTaskHandle) );
 #endif
-
 }
 
-#if (GSG_USE_RTOS == 1)	//freeRTOS
+#if (GSG_OS_USED == GSG_OS_FREERTOS)	//freeRTOS
 static void nvmRqstHandlerTask(void *pvParameters)
 {
 	BaseType_t status=pdFALSE;
@@ -49,9 +88,10 @@ static void nvmRqstHandlerTask(void *pvParameters)
 	while(1)
 	{
 		if(moduleInit == 0)
-		{	SEGGER_SYSVIEW_PrintfHost("Init");
-			if(xTaskNotifyWait(0, 0,NULL, portMAX_DELAY) == pdTRUE)  //ToDo: Recheck this value
-				;
+		{	
+			// SEGGER_SYSVIEW_PrintfHost("Init");
+			// if(xTaskNotifyWait(0, 0,NULL, portMAX_DELAY) == pdTRUE)  //ToDo: Recheck this value
+			// 	;
 			//Any need to init NVM?
 			moduleInit = 1;
 		}
