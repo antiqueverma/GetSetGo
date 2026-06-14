@@ -12,8 +12,6 @@
 //  #warning "GSG_OS_USED not defined, defaulting to GSG_OS_BARE_METAL"
 //#endif
 
-#include "port/stm32f407ve/port.h"
-
 // freeRTOS kernel includes
 #if (GSG_OS_USED == GSG_OS_FREERTOS)
   #include "FreeRTOS.h"
@@ -26,20 +24,15 @@
   #error "NO CMSIS V2 SUPPORT"
 #endif
 
-//#if (GSG_USE_HAL_BINDING == GSG_ENABLE)
-//	#if (GSG_MCU_FAMILY == GSG_MCU_STM32)
-//
-//	#endif
-//#endif
+#if GSG_USE_SYS == GSG_ENABLE
+  #include "sys/sys.h"
+#endif
 
 #if GSG_USE_24CXX
   #include "device/24cXX/eeprom.h"
-  #include "drv/stm32/I2C/i2c.h"
-#endif
-
-// Conditionally Include Enabled Modules
-#if GSG_USE_GPIO
-  #include "gpio.h"
+  #ifndef GSG_USE_I2C
+    #define GSG_USE_I2C
+  #endif
 #endif
 
 #if GSG_USE_SERIAL == GSG_ENABLE
@@ -66,6 +59,10 @@
   #include "sys/nvm/nvm.h"
 #endif
 
+#if (GSG_USE_W25QXX == GSG_ENABLE)
+  #include "device/w25qXX/flash.h"
+#endif
+
 #if (GSG_USE_WDT == GSG_ENABLE)
   #include "wdt.h"
 #endif
@@ -88,6 +85,10 @@
 
 #if (GSG_USE_SVAR == GSG_ENABLE)
   #include "services/svar/svar.h"
+#endif
+
+#if (GSG_USE_TASKMGR == GSG_ENABLE)
+  #include "services/taskman/taskmgr.h"
 #endif
 
 #if (GSG_USE_EVENT == GSG_ENABLE)
@@ -130,12 +131,40 @@
   #include "connectivity/esp8266/esp8266.h"
 #endif
 
-//#if (GSG_USE_HAL_BINDING == GSG_ENABLE)
-//	#if (GSG_MCU_FAMILY == GSG_MCU_STM32)
-//  	  #include "halbindstm32.h"
-//	#endif
-//#endif
-
 // Add more module includes as needed...
+
+
+/* Driver Dependencies */ 
+#if defined(GSG_PLATFORM_STM32)
+
+  #if GSG_USE_I2C == GSG_ENABLE
+    #include "drv/stm32/I2C/i2c.h"
+  #endif
+
+  #if GSG_USE_GPIO
+    #include "drv/stm32/GPIO/gpio.h"
+  #endif
+
+  #if GSG_USE_UART == GSG_ENABLE
+    #include "drv/stm32/UART/uart.h"
+  #endif
+
+  #if GSG_USE_SPI == GSG_ENABLE
+    #include "drv/stm32/SPI/spi.h"
+  #endif
+  
+  #include "port/stm32f407ve/port.h"
+  
+#elif defined(GSG_PLATFORM_WINDOWS)
+  // Include Windows-specific headers or definitions if needed
+  #include "port/windows/port.h"
+  
+  #if GSG_USE_SPI == GSG_ENABLE
+    #include "drv/win/SPI/spi.h"
+  #endif
+
+  #warning "Windows platform selected - ensure appropriate drivers and modules are implemented"
+#endif
+
 
 #endif // GSG_BASE_H_

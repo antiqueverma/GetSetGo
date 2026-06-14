@@ -5,12 +5,14 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "semphr.h"
+#include "stream_buffer.h"
 #include <stdarg.h>
+#include "services/serial/serial.h"
 
 // Debugger Configs
 #define DEBUG_LOG_EN                1
 #define DEBUG_TASK_PRIORITY         11
-#define DEBUG_TASK_STACK_SIZE       KB_to_B(2)
+#define DEBUG_TASK_STACK_SIZE       256
 #define DEBUG_TX_BUFF_SIZE          KB_to_B(1)
 #define DEBUG_MSG_MAX_LEN           128
 #define DEBUG_TAG_EN                1
@@ -25,19 +27,20 @@ typedef enum {
    DEBUG_LEVEL_VERBOSE,
 } debugLevel_t;
 
-
 typedef enum {
    DEBUG_TAG_DEFAULT = 0,
+   DEBUG_TAG_SYS,
    DEBUG_TAG_SVAR,
    DEBUG_TAG_MODBUS,
    DEBUG_TAG_COMM,
    DEBUG_TAG_SENSOR,
+   DEBUG_TAG_FLASH,
    DEBUG_TAG_SD,
    DEBUG_TAG_UI,
    DEBUG_TAG_ESP,
    DEBUG_TAG_ASSERT,
    DEBUG_TAG_BSP,
-   DEBUG_TAG_MSP,
+   DEBUG_TAG_PSP,
    DEBUG_TAG_APP  // This mst be the last entry
 } debugTagId_t;
 
@@ -99,7 +102,7 @@ typedef enum {
 typedef void (*debugTxCallback_t)(const char *data, uint16_t size);
 extern uint16_t   DEBUG_command;
 
-void DEBUG_Init( void );
+gsg_result_t DEBUG_Init( void );
 void DEBUG_Log_Switch(debugTagId_t tag, bool enable);
 void DEBUG_LogLevelSet(uint8_t level);
 uint8_t DEBUG_LogLevelGet( void );
@@ -108,5 +111,6 @@ void debugLogRaw(char * msg);
 gsg_result_t DEBUG_RegisterTxCallback(debug_channel_t channel, debugTxCallback_t cb);
 void DEBUG_setOutputChannel(debug_channel_t channel);
 debug_channel_t DEBUG_getOutputChannel(void);
+gsg_result_t DEBUG_setPort(serial_port_t *port);
 #endif
 

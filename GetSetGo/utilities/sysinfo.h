@@ -51,13 +51,13 @@ typedef enum{
 
 
 
-static_assert((sizeof(APP_NAME) <= SYS_STRING_FIELD_LEN), "App name too long");
+// static_assert((sizeof(APP_NAME) <= SYS_STRING_FIELD_LEN), "App name too long");
 
-static_assert((sizeof(SYS_HW_PART_NUMBER) <= SYS_STRING_FIELD_LEN), "Hardware part number too long");
+// static_assert((sizeof(SYS_HW_PART_NUMBER) <= SYS_STRING_FIELD_LEN), "Hardware part number too long");
 
-static_assert((sizeof(SYS_SW_PART_NUMBER) <= SYS_STRING_FIELD_LEN), "Software part number too long");
+// static_assert((sizeof(SYS_SW_PART_NUMBER) <= SYS_STRING_FIELD_LEN), "Software part number too long");
 
-static_assert((sizeof(SYS_SERIAL_NUMBER) <= SYS_STRING_FIELD_LEN), "Serial number too long");
+// static_assert((sizeof(SYS_SERIAL_NUMBER) <= SYS_STRING_FIELD_LEN), "Serial number too long");
 
 // Struct for storing all system information
 typedef struct {

@@ -3,8 +3,8 @@
 #include "gsg_config.h"
 #ifndef GSG_PORT_H_
 #define GSG_PORT_H_
-#include "stm32f4xx_hal.h"
-// Port definitions fr the stm32f407ve mcu
+
+// Port definitions for the windows
 typedef enum {
     SYS_PER_RCC,
     /* UART/USART Peripherals */
@@ -74,23 +74,5 @@ typedef enum {
 #define PORT_PERIPHERAL_SPI_COUNT       3
 #define PORT_PERIPHERAL_TIM_COUNT       14
 #define PORT_PERIPHERAL_ADC_COUNT       3
-
-extern SPI_HandleTypeDef hspi1;
-extern SPI_HandleTypeDef hspi2;
-extern SPI_HandleTypeDef hspi3;
-
-extern UART_HandleTypeDef huart1;
-extern UART_HandleTypeDef huart2;
-extern UART_HandleTypeDef huart3;
-extern UART_HandleTypeDef huart4;
-extern UART_HandleTypeDef huart5;
-extern UART_HandleTypeDef huart6;
-
-extern I2C_HandleTypeDef hi2c1;
-extern I2C_HandleTypeDef hi2c2;
-extern I2C_HandleTypeDef hi2c3;
-
-extern CAN_HandleTypeDef hcan1;
-extern CAN_HandleTypeDef hcan2;
 
 #endif /* GSG_PORT_H_*/
