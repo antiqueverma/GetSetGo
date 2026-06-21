@@ -61,6 +61,9 @@
 
 #if (GSG_USE_W25QXX == GSG_ENABLE)
   #include "device/w25qXX/flash.h"
+  #ifndef GSG_USE_SPI
+    #define GSG_USE_SPI
+  #endif
 #endif
 
 #if (GSG_USE_WDT == GSG_ENABLE)
@@ -137,19 +140,19 @@
 /* Driver Dependencies */ 
 #if defined(GSG_PLATFORM_STM32)
 
-  #if GSG_USE_I2C == GSG_ENABLE
+  #ifdef GSG_USE_I2C
     #include "drv/stm32/I2C/i2c.h"
   #endif
 
-  #if GSG_USE_GPIO
+  #ifdef GSG_USE_GPIO
     #include "drv/stm32/GPIO/gpio.h"
   #endif
 
-  #if GSG_USE_UART == GSG_ENABLE
+  #ifdef GSG_USE_UART
     #include "drv/stm32/UART/uart.h"
   #endif
 
-  #if GSG_USE_SPI == GSG_ENABLE
+  #ifdef GSG_USE_SPI 
     #include "drv/stm32/SPI/spi.h"
   #endif
   

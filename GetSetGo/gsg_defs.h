@@ -13,8 +13,15 @@
 #define PASS        1
 //#define SUCCESS     1
 #define FAIL        0
+
+#ifndef TRUE
 #define TRUE        1
+#endif
+
+#ifndef FALSE
 #define FALSE       0
+#endif
+
 #define VALID       1
 #define INVALID     0
 
@@ -30,6 +37,8 @@
 // Memory Size Converters
 #define KB_to_B(kbs)		(1024 * kbs)
 #define MB_to_B(mbs)		(1024 * KB_to_B(mbs))
+#define B_to_KB(bytes)		((bytes) / 1024)
+#define B_to_MB(bytes)		((bytes) / (1024 * 1024))
 
 // Time Constants (generic tick-based systems)
 #define SEC_to_MS(sec)      ((sec) * 1000UL)

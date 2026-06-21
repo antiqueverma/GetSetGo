@@ -55,5 +55,6 @@ void SysInfo_Init( void )
     //snprintf(SYS_INFO.serialNumber, SYS_STRING_FIELD_LEN, "%s", SYS_SERIAL_NUMBER);
     //NVM_writeBytes(NVM_ADD_SYS_INFO_OFFSET + byteCtr, &SYS_INFO.serialNumber, sizeof(SYS_INFO.serialNumber));
     byteCtr = sizeof(SYS_INFO.serialNumber);
+    (void)byteCtr;
 }
 

@@ -15,7 +15,7 @@ static void sysTaskHandler(void *args);
 
 void SYS_Init(void) 
 {
-    xTaskCreate(sysTaskHandler, "SYS", 512, NULL, 1, NULL);
+    xTaskCreate(sysTaskHandler, "SYS", 256, NULL, 1, NULL);
 }
 
 extern void PSP_Init(void);
