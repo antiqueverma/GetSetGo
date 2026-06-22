@@ -6,6 +6,9 @@
 #include "svar_internal.h"
 
 gsg_result_t SVAR_registerModule(svar_module_t *module);
+gsg_result_t SVAR_attachStorage(svar_module_t *module, nvm_device_t *nvm);
+gsg_result_t SVAR_ResetModule(svar_module_t *module);
+
 gsg_result_t SVAR_Set(uint32_t id, void *data);
 gsg_result_t SVAR_Get(uint32_t id, void *data);
 

@@ -109,16 +109,6 @@ typedef struct {
     const uint32_t          parent;
     const uint32_t          nvmAddr;
     
-    // 16bits
-    uint16_t if0Access:2;
-    uint16_t if1Access:2;
-    uint16_t if2Access:2;
-    uint16_t if3Access:2;
-    uint16_t if4Access:2;
-    uint16_t if5Access:2;
-    uint16_t if6Access:2;
-    uint16_t if7Access:2;
-
     uint8_t                 type;
     uint8_t                 category;
     svar_flags_t            flags; 

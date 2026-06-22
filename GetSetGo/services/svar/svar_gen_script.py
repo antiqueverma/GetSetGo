@@ -135,6 +135,24 @@ def get_excel_field(obj, field_names):
     return None
 
 
+def get_excel_raw_field(obj, field_names):
+    """
+    Return a raw cell value using any of the field_names.
+    Empty strings are returned as empty strings.
+    """
+    if not isinstance(obj, dict):
+        return None
+
+    for name in field_names:
+        if name in obj:
+            value = obj.get(name)
+            if isinstance(value, str):
+                return value.strip()
+            return value
+
+    return None
+
+
 def sanitize_enum_name(name):
     if not name or not isinstance(name, str):
         return 'UNKNOWN'
@@ -147,21 +165,92 @@ def sanitize_enum_name(name):
 
 
 def get_variable_name(obj):
-    """Resolve the variable name from common possible headers."""
+    """Resolve the enum/source variable name from the Name column."""
     if not isinstance(obj, dict):
         return ''
 
-    candidates = ['Variable Name', 'Name', 'SVAR Name', 'SVAR', 'Variable']
-    for key in candidates:
-        value = obj.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-
-    for key, value in obj.items():
-        if isinstance(value, str) and value.strip():
-            return value.strip()
+    value = obj.get('Name')
+    if isinstance(value, str):
+        return value.strip()
+    if value is not None:
+        return str(value).strip()
 
     return ''
+
+
+def get_display_name(obj):
+    """Resolve the string used for system_variable_t.name from DisplayName."""
+    value = get_excel_raw_field(obj, ['DisplayName', 'displayName', 'displayname'])
+    if value is None:
+        return ''
+
+    return str(value).strip()
+
+
+def describe_row(obj):
+    row_num = obj.get('__row_num', '?') if isinstance(obj, dict) else '?'
+    name = get_variable_name(obj)
+    if name:
+        return f"variables row {row_num}, Name='{name}'"
+
+    return f"variables row {row_num}"
+
+
+def parse_int_value(value, context, default=0):
+    if value is None:
+        return default
+
+    if isinstance(value, str):
+        value = value.strip()
+        if value == '':
+            return default
+
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{context}: expected integer, got {value!r}")
+
+
+def parse_int_field(obj, field_names, default=0):
+    value = get_excel_raw_field(obj, field_names)
+    field_label = '/'.join(field_names)
+    return parse_int_value(value, f"{describe_row(obj)} field '{field_label}'", default)
+
+
+def parse_config_int(config_data, key, default=0):
+    return parse_int_value(config_data.get(key), f"config field '{key}'", default)
+
+
+def get_svar_comment(obj):
+    """Resolve optional enum comment text from the spreadsheet."""
+    comment = get_excel_field(obj, ['comment', 'Comment', 'COMMENT'])
+    if comment is None:
+        return ''
+
+    return str(comment).replace('\r', ' ').replace('\n', ' ').strip()
+
+
+def c_escape_string(value):
+    """Escape text for use inside a C string literal."""
+    return str(value).replace('\\', '\\\\').replace('"', '\\"')
+
+
+def format_string_default(value):
+    """Return spreadsheet Default text for string SVARs."""
+    if value is None:
+        return ''
+    if isinstance(value, str):
+        return value
+
+    return str(value)
+
+
+def format_svar_name_initializer(name):
+    """Return the C initializer for system_variable_t.name."""
+    if name == '' or name == 'NULL':
+        return 'NULL'
+
+    return f'"{c_escape_string(name)}"'
 
 
 def truncate_name(name, max_length):
@@ -219,10 +308,10 @@ def read_database(excel_file_path):
                         product_name = value if value else 'Default'
                     # Extract SVAR_OFFSET field
                     if key.upper() == 'SVAR_OFFSET':
-                        svar_offset = int(value) if value else 0
+                        svar_offset = parse_int_value(value, "config field 'SVAR_OFFSET'", 0)
                     # Extract SVAR_NAME_MAX_LENGTH field (from next cell)
                     if key.upper() == 'MAX_NAME_LEN':
-                        svar_name_max_length = int(value) if value else 8
+                        svar_name_max_length = parse_int_value(value, "config field 'MAX_NAME_LEN'", 8)
                         # if len(row) >= 3 and row[2]:
                             # svar_name_max_length = int(row[2]) if row[2] else 16
             log_debug(f"Read config: {config_data}")
@@ -243,10 +332,7 @@ def read_database(excel_file_path):
 
         data = []
 
-        for row in rows[1:]:
-            if not row or not row[0]:
-                continue
-
+        for row_num, row in enumerate(rows[1:], start=2):
             obj = {}
 
             for i, header in enumerate(headers):
@@ -260,6 +346,11 @@ def read_database(excel_file_path):
                     value = value.strip()
 
                 obj[header] = value
+
+            obj['__row_num'] = row_num
+            if not get_variable_name(obj):
+                log_info(f"Stopping variable parse at row {row_num}: Name column is empty")
+                break
 
             data.append(obj)
 
@@ -306,10 +397,10 @@ def create_app_header(data, output_dir, config_data=None, product_name='Default'
 
     try:
         with open(header_file, 'w') as f:
-            config_start  = int(config_data.get('NVM_START_ADD_CONFIG', 0))
-            runtime_start = int(config_data.get('NVM_START_ADD_RUNTIME', 0))
-            event_start   = int(config_data.get('NVM_START_ADD_EVENT', 0))
-            nvm_end       = int(config_data.get('NVM_END_ADD', 0))
+            config_start  = parse_config_int(config_data, 'NVM_START_ADD_CONFIG', 0)
+            runtime_start = parse_config_int(config_data, 'NVM_START_ADD_RUNTIME', 0)
+            event_start   = parse_config_int(config_data, 'NVM_START_ADD_EVENT', 0)
+            nvm_end       = parse_config_int(config_data, 'NVM_END_ADD', 0)
 
             config_counter  = config_start
             runtime_counter = runtime_start
@@ -330,14 +421,17 @@ def create_app_header(data, output_dir, config_data=None, product_name='Default'
 
             # Create enum with variable IDs
             f.write('/* Variable ID Enum */\n')
-            f.write('typedef enum {\n')
+            f.write('typedef enum {\n')            
             for obj in data:
                 var_name = get_variable_name(obj)
                 if var_name:
                     enum_name = sanitize_enum_name(var_name.replace('SVAR_', ''))
-                    f.write(f'    SVAR_{product_prefix}_{enum_name} = SVAR_OFFSET_{product_prefix} + {obj["id"]},\n')
-            f.write(f'    __SVAR_{product_prefix}_MAX_ID = SVAR_OFFSET_{product_prefix} + {len(data) + 1}\n')
-            f.write(f'}} svar_id_t;\n\n')
+                    comment = get_svar_comment(obj)
+                    comment_suffix = f' // {comment}' if comment else ' //'
+                    f.write(f'    SVAR_{product_prefix}_{enum_name:<25} = SVAR_OFFSET_{product_prefix} + {obj["id"]},\t\t{comment_suffix}\n')
+            # f.write(f'    __SVAR_{product_prefix}_MAX_ID = SVAR_OFFSET_{product_prefix} + {len(data) + 1}\n')
+            f.write(f'    __SVAR_{product_prefix}_MAX_ID{"":<{34 - len(f"__SVAR_{product_prefix}_MAX_ID")}} = SVAR_OFFSET_{product_prefix} + {len(data)}\n')
+            f.write(f'}} svar_{product_prefix}_id_t;\n\n')
             
             # Generate NVM address defines for persistent variables
             f.write('/* NVM Address Allocation */\n')
@@ -360,23 +454,23 @@ def create_app_header(data, output_dir, config_data=None, product_name='Default'
                         type_size = size
                         define_name = sanitize_enum_name(var_name.replace('SVAR_', ''))
                         if svar_type == 'SVAR_TYPE_STRING':
-                            type_size = int(get_excel_field(obj, ['Max']) or 0)
+                            type_size = parse_int_field(obj, ['Max'], 0)
 
                         define_name = sanitize_enum_name(var_name.replace('SVAR_', ''))
 
                         if category_enum == 'SVAR_CAT_CONFIG':
                             offset = config_counter - config_start
-                            f.write(f'#define NVM_ADD_SVAR_{product_prefix}_{define_name} (NVM_ADD_SVAR_{product_prefix}_CONFIG_BASE + {offset})\n')
+                            f.write(f'#define NVM_ADD_SVAR_{product_prefix}_{define_name:<30} (NVM_ADD_SVAR_{product_prefix}_CONFIG_BASE + {offset})\n')
                             config_counter += type_size
 
                         elif category_enum == 'SVAR_CAT_RUNTIME':
                             offset = runtime_counter - runtime_start
-                            f.write(f'#define NVM_ADD_SVAR_{product_prefix}_{define_name} (NVM_ADD_SVAR_{product_prefix}_RUNTIME_BASE + {offset})\n')
+                            f.write(f'#define NVM_ADD_SVAR_{product_prefix}_{define_name:<30} (NVM_ADD_SVAR_{product_prefix}_RUNTIME_BASE + {offset})\n')
                             runtime_counter += type_size
 
                         elif category_enum == 'SVAR_CAT_EVENT':
                             offset = event_counter - event_start
-                            f.write(f'#define NVM_ADD_SVAR_{product_prefix}_{define_name} (NVM_ADD_SVAR_{product_prefix}_EVENT_BASE + {offset})\n')
+                            f.write(f'#define NVM_ADD_SVAR_{product_prefix}_{define_name:<30} (NVM_ADD_SVAR_{product_prefix}_EVENT_BASE + {offset})\n')
                             event_counter += type_size
             
             if persistent_vars:
@@ -388,7 +482,7 @@ def create_app_header(data, output_dir, config_data=None, product_name='Default'
 
             # Extern module declaration
             f.write(f'/* SVAR Module */\n')
-            f.write(f'extern const svar_module_t svar_module_{product_prefix};\n\n')
+            f.write(f'extern svar_module_t svar_module_{product_prefix};\n\n')
 
             f.write(f'#endif /* SVAR_{product_prefix}_H_ */\n')
 
@@ -416,10 +510,10 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
         # -------- STRING + NVM PREPASS --------
         string_buffers = []
         nvm_map = {}
-        config_start  = int(config_data.get('NVM_START_ADD_CONFIG', 0))
-        runtime_start = int(config_data.get('NVM_START_ADD_RUNTIME', 0))
-        event_start   = int(config_data.get('NVM_START_ADD_EVENT', 0))
-        nvm_end       = int(config_data.get('NVM_END_ADD', 0))
+        config_start  = parse_config_int(config_data, 'NVM_START_ADD_CONFIG', 0)
+        runtime_start = parse_config_int(config_data, 'NVM_START_ADD_RUNTIME', 0)
+        event_start   = parse_config_int(config_data, 'NVM_START_ADD_EVENT', 0)
+        nvm_end       = parse_config_int(config_data, 'NVM_END_ADD', 0)
 
         config_counter  = config_start
         runtime_counter = runtime_start
@@ -437,7 +531,7 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
             is_persistent = str(persistent).lower() in ['yes', 'true', '1']
 
             if svar_type == 'SVAR_TYPE_STRING':
-                max_len = int(get_excel_field(obj, ['Max']) or 0)
+                max_len = parse_int_field(obj, ['Max'], 0)
                 string_buffers.append((obj['id'], max_len))
                 size = max_len
 
@@ -506,12 +600,12 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
             # Create index counter starting from 0
             table_index = 0
             for obj in data:
-                var_name = get_variable_name(obj)
-                if not var_name:
+                raw_var_name = get_variable_name(obj)
+                if not raw_var_name:
                     continue
 
                 # Truncate variable name to svar_name_max_length
-                var_name = truncate_name(var_name, svar_name_max_length)
+                var_name = truncate_name(raw_var_name, svar_name_max_length)
 
                 type_str = get_excel_field(obj, ['Type'])
                 svar_type, field, size = resolve_type(type_str)
@@ -529,36 +623,11 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
                 persistent = get_excel_field(obj, ['Persistent'])
                 is_persistent = str(persistent).lower() in ['yes', 'true', '1']
 
-                # Get access values for if0Access - if7Access
-                acc_map = {
-                    'DISABLED': 'SVAR_ACCESS_DISABLED',
-                    'READ_ONLY': 'SVAR_ACCESS_READ_ONLY',
-                    'READ_WRITE': 'SVAR_ACCESS_READ_WRITE',
-                    '0': 'SVAR_ACCESS_DISABLED',
-                    '1': 'SVAR_ACCESS_READ_ONLY',
-                    '2': 'SVAR_ACCESS_READ_WRITE',
-                }
-                acc1 = get_excel_field(obj, ['acc1']) or ''
-                acc2 = get_excel_field(obj, ['acc2']) or ''
-                acc3 = get_excel_field(obj, ['acc3']) or ''
-                acc4 = get_excel_field(obj, ['acc4']) or ''
-                acc5 = get_excel_field(obj, ['acc5']) or ''
-                acc6 = get_excel_field(obj, ['acc6']) or ''
-                acc7 = get_excel_field(obj, ['acc7']) or ''
-                acc8 = get_excel_field(obj, ['acc8']) or ''
-                
-                acc1_enum = acc_map.get(str(acc1).upper().strip(), 'SVAR_ACCESS_DISABLED')
-                acc2_enum = acc_map.get(str(acc2).upper().strip(), 'SVAR_ACCESS_DISABLED')
-                acc3_enum = acc_map.get(str(acc3).upper().strip(), 'SVAR_ACCESS_DISABLED')
-                acc4_enum = acc_map.get(str(acc4).upper().strip(), 'SVAR_ACCESS_DISABLED')
-                acc5_enum = acc_map.get(str(acc5).upper().strip(), 'SVAR_ACCESS_DISABLED')
-                acc6_enum = acc_map.get(str(acc6).upper().strip(), 'SVAR_ACCESS_DISABLED')
-                acc7_enum = acc_map.get(str(acc7).upper().strip(), 'SVAR_ACCESS_DISABLED')
-                acc8_enum = acc_map.get(str(acc8).upper().strip(), 'SVAR_ACCESS_DISABLED')
-
                 f.write(f'\t[{table_index}] = {{\n')
                 f.write(f'\t\t.id = SVAR_OFFSET_{product_prefix} + {obj["id"]},\n')
-                f.write(f'\t\t.name = "{var_name}",\n')
+                display_name = get_display_name(obj)
+                name_initializer = format_svar_name_initializer(display_name)
+                f.write(f'\t\t.name = {name_initializer},\n')
                 f.write(f'\t\t.type = {svar_type},\n')
                 f.write(f'\t\t.parent = {parent_id},\n')
 
@@ -567,16 +636,16 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
                 f.write(f'\t\t.category = {category_enum},\n')
 
                 if svar_type == 'SVAR_TYPE_STRING':
-                    max_len = int(max_val or 0)
+                    max_len = parse_int_field(obj, ['Max'], 0)
                     f.write(f'\t\t.value = {{ .str = svar_{obj["id"]}_buf }},\n')
-                    f.write(f'\t\t.def   = {{ .str = "{value}" }},\n')
+                    f.write(f'\t\t.def   = {{ .str = "{c_escape_string(format_string_default(value))}" }},\n')
                     f.write(f'\t\t.min = {{ .u16 = 0 }},')
                     f.write(f'\t\t.max = {{ .u16 = {max_len} }},\n')
                     # f.write(f'\t\t.maxLen = {max_len},\n')
                 else:
-                    value = int(value or 0)
-                    min_val = int(min_val or 0)
-                    max_val = int(max_val or 0)
+                    value = parse_int_field(obj, ['Default'], 0)
+                    min_val = parse_int_field(obj, ['Min'], 0)
+                    max_val = parse_int_field(obj, ['Max'], 0)
 
                     f.write(f'\t\t.value = {{.{field} = {value}}},')
                     f.write(f'\t\t.def   = {{.{field} = {value}}},\n')
@@ -589,16 +658,6 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
                 f.write(f'\t\t\t.persistent = {1 if is_persistent else 0},\n')
                 f.write(f'\t\t}},\n')
 
-                # Write if0Access - if7Access fields
-                f.write(f'\t\t.if0Access = {acc1_enum},\n')
-                f.write(f'\t\t.if1Access = {acc2_enum},\n')
-                f.write(f'\t\t.if2Access = {acc3_enum},\n')
-                f.write(f'\t\t.if3Access = {acc4_enum},\n')
-                f.write(f'\t\t.if4Access = {acc5_enum},\n')
-                f.write(f'\t\t.if5Access = {acc6_enum},\n')
-                f.write(f'\t\t.if6Access = {acc7_enum},\n')
-                f.write(f'\t\t.if7Access = {acc8_enum},\n')
-
                 f.write(f'\t\t.setCb = {"NULL" if not set_cb else set_cb},\n')
                 f.write(f'\t\t.getCb = {"NULL" if not get_cb else get_cb},\n')
 
@@ -609,7 +668,7 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
             f.write('};\n\n')
 
             # Generate svar_module_t struct
-            f.write(f'const svar_module_t svar_module_{product_prefix} = {{\n')
+            f.write(f'svar_module_t svar_module_{product_prefix} = {{\n')
             f.write(f'    .table = svar_table,\n')
             f.write(f'    .count = {len(data)},\n')
             f.write(f'    .varOffset = SVAR_OFFSET_{product_prefix}\n')
@@ -620,7 +679,7 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
         log_pass(f"Created {source_file}")
 
     except Exception as e:
-        log_error(f"Failed: {str(e)}")
+        log_error(f"Failed to create {source_file}: {str(e)}")
 
 
 def create_app_user(data, output_dir, product_name='Default'):

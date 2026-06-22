@@ -427,7 +427,6 @@ static void _initModule(svar_module_t *module)
     for (uint32_t i = 0; i < module->count; i++)
     {
         system_variable_t *sv = &module->table[i];
-
         // copy default to value
         sv->value = sv->def;
 
@@ -622,16 +621,16 @@ int SVAR_Reset(uint32_t id)
     return PASS;
 }
 
-int SVAR_ResetModule(svar_module_t *module)
+gsg_result_t SVAR_ResetModule(svar_module_t *module)
 {
     if (module == NULL || module->table == NULL || module->count == 0)
     {
-        return FAIL;
+        return GSG_INVALID_ARG;
     }
 
     if (!_svarGetLock())
     {
-        return FAIL;
+        return GSG_BUSY;
     }
 
     for (uint16_t j = 0; j < module->count; j++)
@@ -662,7 +661,7 @@ int SVAR_ResetModule(svar_module_t *module)
     }
 
     _svarReleaseLock();
-    return PASS;
+    return GSG_SUCCESS;
 }
 
 int SVAR_GetIdByName(char *name)
@@ -867,7 +866,7 @@ gsg_result_t SVAR_registerGetCallback(uint32_t id, svar_get_callback_t cb)
     return GSG_SUCCESS;
 }
 
-gsg_result_t SVAR_registerNvmDevice(svar_module_t *module, nvm_device_t *nvm)
+gsg_result_t SVAR_attachStorage(svar_module_t *module, nvm_device_t *nvm)
 {
     if (module == NULL) 
         return GSG_INVALID_ARG;
