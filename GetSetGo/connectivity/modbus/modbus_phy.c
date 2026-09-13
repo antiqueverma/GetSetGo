@@ -80,11 +80,12 @@ gsg_result_t mbPhySendData(modbus_port_t *port, uint8_t *data, uint16_t size)
    if (DEBUG_LogLevelGet() >= DEBUG_LEVEL_DEBUG)
    {
        sprintf(hex,"Tx[%d]> ",size);
-       DEBUG_LOGD(DEBUG_TAG_MODBUS,"MB",hex);
+       DEBUG_LOGD(DEBUG_TAG_MODBUS,"MB","%s", hex);
        for(uint16_t i=0; i<size ; i++ )
 
        {
-           sprintf(hex,"%.2X  ",data[i]); 		DEBUG_LOG_RAW(hex);
+           sprintf(hex,"%.2X  ",data[i]);
+           DEBUG_LOG_RAW("%s", hex);
        }
    }
     return GSG_SUCCESS;

@@ -325,6 +325,24 @@ static gsg_result_t _getMax(system_variable_t *sv, svar_value_t *val)
     return GSG_SUCCESS;
 }
 
+static gsg_result_t _getType(system_variable_t *sv, svar_value_t *val)
+{
+    if (!_svarGetLock())
+    {
+        return GSG_BUSY;
+    }
+
+    if (sv == NULL || val == NULL)
+    {
+        _svarReleaseLock();
+        return GSG_INVALID_ARG;
+    }
+
+    val->u8 = sv->type;
+    _svarReleaseLock();
+    return GSG_SUCCESS;
+}
+
 static gsg_result_t _setDefault(system_variable_t *sv, svar_value_t *val)
 {
     if (!_svarGetLock())
@@ -420,7 +438,6 @@ static void _copyFromUnion(system_variable_t *sv, void *dst, svar_value_t *src)
             break;
     }
 }
-
 
 static void _initModule(svar_module_t *module)
 {
@@ -815,6 +832,24 @@ gsg_result_t SVAR_GetMax(uint32_t id, void *data)
     }
 
     _copyFromUnion(sv, data, &temp);
+    return GSG_SUCCESS;
+}
+
+gsg_result_t SVAR_GetType(uint32_t id, svar_type_t *type)
+{
+    if (type == NULL)
+    {
+        return GSG_INVALID_ARG;
+    }
+
+    system_variable_t *sv = _getSvarFromId(id);
+    if (sv == NULL)
+    {
+        return GSG_NOT_FOUND;
+    }
+
+    *type = sv->type;
+
     return GSG_SUCCESS;
 }
 

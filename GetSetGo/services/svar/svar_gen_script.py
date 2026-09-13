@@ -413,7 +413,7 @@ def create_app_header(data, output_dir, config_data=None, product_name='Default'
 
             f.write('/* Configurations */\n')
             # f.write('#define SVAR_MAX_VARIABLES      100\n')
-            f.write(f'#define SVAR_NAME_MAX_LENGTH    {svar_name_max_length}\n\n')
+            f.write(f'#define SVAR_{product_prefix}_NAME_MAX_LENGTH    {svar_name_max_length}\n\n')
 
             # SVAR_OFFSET define
             f.write('/* SVAR Offset */\n')

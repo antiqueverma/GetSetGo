@@ -162,6 +162,8 @@ typedef enum {
     GPIO_I13 = 0x8D,
     GPIO_I14 = 0x8E,
     GPIO_I15 = 0x8F,
+
+    __GPIO_PIN_COUNT
 } gpio_pin_t;
 
 gsg_result_t GPIO_writePin(gpio_pin_t pin, gpio_pin_state_t state);

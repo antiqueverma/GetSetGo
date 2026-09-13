@@ -109,7 +109,7 @@ typedef struct {
     const uint32_t          parent;
     const uint32_t          nvmAddr;
     
-    uint8_t                 type;
+    const uint8_t           type;
     uint8_t                 category;
     svar_flags_t            flags; 
     uint8_t                 __reserved;

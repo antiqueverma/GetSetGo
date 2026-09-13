@@ -4,7 +4,7 @@
 #ifndef GSG_PORT_H_
 #define GSG_PORT_H_
 #include "stm32f4xx_hal.h"
-// Port definitions fr the stm32f407ve mcu
+// Port definitions for the stm32f407ve mcu
 typedef enum {
     SYS_PER_RCC,
     /* UART/USART Peripherals */
@@ -74,6 +74,11 @@ typedef enum {
 #define PORT_PERIPHERAL_SPI_COUNT       3
 #define PORT_PERIPHERAL_TIM_COUNT       14
 #define PORT_PERIPHERAL_ADC_COUNT       3
+#define PORT_PERIPHERAL_CAN_COUNT       2
+
+#define PORT_PERIPHERAL_ADC_CHANNEL_COUNT      24
+#define PORT_PERIPHERAL_GPI_CHANNEL_COUNT     100
+#define PORT_PERIPHERAL_GPO_CHANNEL_COUNT     100
 
 extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi2;

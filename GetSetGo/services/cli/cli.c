@@ -100,7 +100,7 @@ void cliHelpCommandCallback(char *args)
         {
             char hex[100];
             sprintf(hex,"\r\n\tCmd: %s - %s", cliDescrTable[i].command, cliDescrTable[i].description);
-            DEBUG_LOG_RAW(hex);
+            DEBUG_LOG_RAW("%s", hex);
         }
     }
 }
@@ -151,9 +151,9 @@ static void cliTask(void *arg)
                         if(cliDescrTable[i].description != NULL)
                         {
                             DEBUG_LOGI("\r\t");
-                            DEBUG_LOG_RAW(cliDescrTable[i].command)
-                            DEBUG_LOG_RAW(" : ") ;
-                            DEBUG_LOG_RAW(cliDescrTable[i].description);
+                            DEBUG_LOG_RAW("%s", cliDescrTable[i].command);
+                            DEBUG_LOG_RAW(" : ");
+                            DEBUG_LOG_RAW("%s", cliDescrTable[i].description);
                         }
                         else
                         {

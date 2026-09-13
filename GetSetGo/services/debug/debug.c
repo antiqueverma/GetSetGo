@@ -1,5 +1,6 @@
 #include "debug.h"
 #include <stdarg.h>
+#include <stdio.h>
 // Based on FreeRTOS
 /*********************************************************
  * Suggestions:
@@ -16,6 +17,8 @@ static TaskHandle_t             debugTaskHandle = NULL;
 static uint64_t                 debugTagMask; // All enabled by default
 static uint8_t                  debugLevelMax;
 static bool                     debugReady = false;
+static char                     debugMsgBuff[DEBUG_MSG_MAX_LEN];
+static uint8_t                  debugBuffOverrun = 0;
 
 #define DEBUG_LOG_ENABLE(tagId) (debugTagMask |= (1UL << (tagId)))
 #define DEBUG_LOG_DISABLE(tagId) (debugTagMask &= ~(1UL << (tagId)))
@@ -102,7 +105,7 @@ static uint32_t getTimeStamp(void)
     return xTaskGetTickCount();
 }
 
-void debugLog(debugTagId_t tagId, char level, char *tag, char *fmt, ...)
+void debugLog(debugTagId_t tagId, char level, const char *tag, const char *fmt, ...)
 {
     configASSERT(debugReady == true);  // Do not print until debug thread is ready 
 
@@ -112,49 +115,80 @@ void debugLog(debugTagId_t tagId, char level, char *tag, char *fmt, ...)
     if (xSemaphoreTake(debugLogMutex, 10) != pdTRUE)
         return;
         
-    char msgBuff[DEBUG_MSG_MAX_LEN];
-    memset(msgBuff, 0x00, sizeof(msgBuff));
+    char *msgBuff = debugMsgBuff;
     uint16_t offset = 0;
     msgBuff[offset++] = '\r';    // New Line
     msgBuff[offset++] = '\n';  // New Line
     msgBuff[offset++] = level; // Log level
     msgBuff[offset++] = ' ';   // Separator
     #if (DEBUG_TIMESTAMP_EN)
-    int len = snprintf(&msgBuff[offset], DEBUG_MSG_MAX_LEN - offset, "[%lu] ", getTimeStamp());
+    size_t remaining = DEBUG_MSG_MAX_LEN - offset;
+    int len = snprintf(&msgBuff[offset], remaining, "[%lu] ", getTimeStamp());
     if (len > 0)
-        offset += len;
+    {
+        if ((size_t)len >= remaining)
+            offset = DEBUG_MSG_MAX_LEN - 1;
+        else
+            offset += len;
+    }
     #endif
     #if (DEBUG_TAG_EN == 1)
     if (tag != NULL)
     {
-        int len = snprintf((char *)&msgBuff[offset], DEBUG_MSG_MAX_LEN - offset, "%s:", tag);
+        size_t remaining = DEBUG_MSG_MAX_LEN - offset;
+        int len = snprintf((char *)&msgBuff[offset], remaining, "%s:", tag);
         if (len > 0)
-            offset += len;
+        {
+            if ((size_t)len >= remaining)
+                offset = DEBUG_MSG_MAX_LEN - 1;
+            else
+                offset += len;
+        }
     }
     #endif
     // Format the variadic message
     if (fmt != NULL)
     {
+        size_t remaining = DEBUG_MSG_MAX_LEN - offset;
         va_list args;
         va_start(args, fmt);
-        int len = vsnprintf((char *)&msgBuff[offset], DEBUG_MSG_MAX_LEN - offset, fmt, args);
+        int len = vsnprintf((char *)&msgBuff[offset], remaining, fmt, args);
         va_end(args);
         if (len > 0)
-            offset += len;
+        {
+            if ((size_t)len >= remaining)
+                offset = DEBUG_MSG_MAX_LEN - 1;
+            else
+                offset += len;
+        }
     }
-    xStreamBufferSend(debugStreamHandle, msgBuff, offset, 0);
+    if(xStreamBufferSend(debugStreamHandle, msgBuff, offset, 0) == 0)
+        debugBuffOverrun++;
     xSemaphoreGive(debugLogMutex);
-    
 }
-void debugLogRaw(char *msg)
+void debugLogRaw(const char *fmt, ...)
 {
     configASSERT(debugReady == true);  // Do not print until debug thread is ready 
-    if(msg == NULL) return;
+    if(fmt == NULL) return;
 
     if (xSemaphoreTake(debugLogMutex, 100) != pdTRUE)
         return;
-    
-    xStreamBufferSend(debugStreamHandle, msg, strlen(msg), 0);
+
+    char *msgBuff = debugMsgBuff;
+
+    va_list args;
+    va_start(args, fmt);
+    int len = vsnprintf(msgBuff, DEBUG_MSG_MAX_LEN, fmt, args);
+    va_end(args);
+
+    if (len > 0)
+    {
+        size_t bytes = (size_t)len;
+        if (bytes >= DEBUG_MSG_MAX_LEN)
+            bytes = DEBUG_MSG_MAX_LEN - 1;
+
+        xStreamBufferSend(debugStreamHandle, msgBuff, bytes, 0);
+    }
 
     xSemaphoreGive(debugLogMutex);
 }

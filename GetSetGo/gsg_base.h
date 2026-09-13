@@ -103,7 +103,7 @@
 #endif
 
 #if (GSG_USE_IO == GSG_ENABLE)
-  #include "io.h"
+  #include "services/io/io.h"
 #endif
 
 #if (GSG_USE_MEMALLOC == GSG_ENABLE)
@@ -134,6 +134,10 @@
   #include "connectivity/esp8266/esp8266.h"
 #endif
 
+#if (GSG_USE_IO == GSG_ENABLE)
+  #include "services/io/io.h"
+#endif
+
 // Add more module includes as needed...
 
 
@@ -154,6 +158,14 @@
 
   #ifdef GSG_USE_SPI 
     #include "drv/stm32/SPI/spi.h"
+  #endif
+
+  #ifdef GSG_USE_CAN
+    #include "drv/stm32/CAN/can.h"
+  #endif
+  
+  #ifdef GSG_USE_ADC
+    #include "drv/stm32/ADC/adc.h"
   #endif
   
   #include "port/stm32f407ve/port.h"

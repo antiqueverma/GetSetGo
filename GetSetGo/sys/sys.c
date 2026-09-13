@@ -1,6 +1,13 @@
 
 #include "sys.h"
 
+#include <stdio.h>
+#include <string.h>
+#include "stm32f4xx_hal.h"
+
+// Extern from main.c
+extern UART_HandleTypeDef huart1;
+
 enum {
     SYS_STATE_PSP_INIT,
     SYS_STATE_BSP_INIT,
@@ -86,4 +93,22 @@ void vApplicationTickHook( void )
 uint64_t SYS_getUpTimeMs(void)
 {
     return sysUpTimeCtr;
+}
+
+/* FreeRTOS stack overflow hook.
+ * Prints a diagnostic message over UART and halts the system.
+ */
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+    (void)xTask;
+    char msg[128];
+    const char *name = pcTaskName ? pcTaskName : "Unknown";
+    int n = snprintf(msg, sizeof(msg), "*** Stack overflow in task: %s\r\n", name);
+    if (n > 0)
+    {
+        uint16_t len = (uint16_t)((n >= (int)sizeof(msg)) ? (sizeof(msg) - 1) : n);
+        HAL_UART_Transmit(&huart1, (uint8_t *)msg, len, HAL_MAX_DELAY);
+    }
+    __disable_irq();
+    for(;;);
 }
