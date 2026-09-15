@@ -14,7 +14,7 @@
 #define DEBUG_LOG_EN                1
 #define DEBUG_TASK_PRIORITY         2
 #define DEBUG_TASK_STACK_SIZE       512
-#define DEBUG_TX_BUFF_SIZE          KB_to_B(1)
+#define DEBUG_TX_BUFF_SIZE          KB_to_B(2)
 #define DEBUG_MSG_MAX_LEN           128
 #define DEBUG_TAG_EN                1
 #define DEBUG_TIMESTAMP_EN          CONFIG_DEBUG_TIMESTAMP_ENABLE       // 0:Disable, 1:10ms, 2: 100ms, 3:1000ms 
