@@ -3,10 +3,10 @@
 #define UART_H_
 
 #include <stdint.h>
-#include "stm32f4xx_hal.h"
+#include "gsg_mcu.h"
+
 #include "FreeRTOS.h"
 #include "semphr.h"
-#include "port/stm32f407ve/port.h"
 #include "gsg_defs.h"
 
 typedef void (*uartRxCallback)(void *ctx, uint8_t byte);

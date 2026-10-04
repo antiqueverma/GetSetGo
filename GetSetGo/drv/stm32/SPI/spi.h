@@ -4,7 +4,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "stm32f4xx_hal.h"
+
+#include "gsg_mcu.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "gsg_defs.h"

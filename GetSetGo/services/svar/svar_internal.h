@@ -29,6 +29,8 @@ typedef enum {
     SVAR_TYPE_UINT64,
     SVAR_TYPE_FLOAT,
     SVAR_TYPE_BOOL,
+    SVAR_TYPE_CHECK_BOX,
+    SVAR_TYPE_COMMAND,
     SVAR_TYPE_CHAR,
     SVAR_TYPE_STRING,
     SVAR_TYPE_GROUP,
@@ -78,6 +80,7 @@ typedef union
     uint32_t   u32;
     float      f;
     bool       b;
+    bool       cmd;
     char       c;
 #if SVAR_ENABLE_64_BIT
     int64_t    i64;
@@ -99,6 +102,7 @@ typedef struct {
     svar_set_callback_t      setCb;
     svar_get_callback_t      getCb;
     char                    *name;
+    char                    *postfix;
 
     svar_value_t            value;
     svar_value_t            min;
@@ -109,6 +113,7 @@ typedef struct {
     const uint32_t          parent;
     const uint32_t          nvmAddr;
     
+    uint16_t                precScaleFactor;
     const uint8_t           type;
     uint8_t                 category;
     svar_flags_t            flags; 

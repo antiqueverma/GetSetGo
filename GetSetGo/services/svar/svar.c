@@ -85,11 +85,13 @@ static int _validate(system_variable_t *sv, svar_value_t *val)
         case SVAR_TYPE_FLOAT:
             if (val->f < sv->min.f || val->f > sv->max.f) return FAIL;
             break;
-
+        case SVAR_TYPE_CHECK_BOX:
         case SVAR_TYPE_BOOL:
             if (!(val->b == 0 || val->b == 1)) return FAIL;
             break;
-
+        case SVAR_TYPE_COMMAND:
+            if (!(val->cmd == 0 || val->cmd == 1)) return FAIL;
+            break;
         case SVAR_TYPE_CHAR:
             if (!isprint((unsigned char)val->c)) return FAIL;
             break;
@@ -139,7 +141,9 @@ static uint16_t _getTypeSize(svar_type_t type, system_variable_t *sv)
     {
         case SVAR_TYPE_INT8:
         case SVAR_TYPE_UINT8:
+        case SVAR_TYPE_CHECK_BOX:
         case SVAR_TYPE_BOOL:
+        case SVAR_TYPE_COMMAND:
         case SVAR_TYPE_CHAR:
             return 1;
         case SVAR_TYPE_INT16:
@@ -383,19 +387,41 @@ static void _copyToUnion(system_variable_t *sv, svar_value_t *dst, void *src)
 {
     switch (sv->type)
     {
-        case SVAR_TYPE_INT8:    dst->i8  = *(int8_t*)src; break;
-        case SVAR_TYPE_UINT8:   dst->u8  = *(uint8_t*)src; break;
-        case SVAR_TYPE_INT16:   dst->i16 = *(int16_t*)src; break;
-        case SVAR_TYPE_UINT16:  dst->u16 = *(uint16_t*)src; break;
-        case SVAR_TYPE_INT32:   dst->i32 = *(int32_t*)src; break;
-        case SVAR_TYPE_UINT32:  dst->u32 = *(uint32_t*)src; break;
+        case SVAR_TYPE_INT8:    
+            dst->i8  = *(int8_t*)src; 
+            break;
+        case SVAR_TYPE_UINT8:   
+            dst->u8  = *(uint8_t*)src; 
+            break;
+        case SVAR_TYPE_INT16:   
+            dst->i16 = *(int16_t*)src; 
+            break;
+        case SVAR_TYPE_UINT16:  
+            dst->u16 = *(uint16_t*)src; 
+            break;
+        case SVAR_TYPE_INT32:   
+            dst->i32 = *(int32_t*)src; 
+            break;
+        case SVAR_TYPE_UINT32:  
+            dst->u32 = *(uint32_t*)src; 
+            break;
         #if SVAR_ENABLE_64_BIT
         case SVAR_TYPE_INT64:   dst->i64 = *(int64_t*)src; break;
         case SVAR_TYPE_UINT64:  dst->u64 = *(uint64_t*)src; break;
         #endif
-        case SVAR_TYPE_FLOAT:   dst->f   = *(float*)src; break;
-        case SVAR_TYPE_BOOL:    dst->b   = *(uint8_t*)src; break;
-        case SVAR_TYPE_CHAR:    dst->c   = *(char*)src; break;
+        case SVAR_TYPE_FLOAT:   
+            dst->f   = *(float*)src;    
+            break;
+        case SVAR_TYPE_CHECK_BOX:
+        case SVAR_TYPE_BOOL:    
+            dst->b   = 0;               
+            break;      // Command type is a momentary trigger hence always reads a 0
+        case SVAR_TYPE_COMMAND: 
+            dst->cmd = *(bool*)src;     
+            break;
+        case SVAR_TYPE_CHAR:    
+            dst->c   = *(char*)src;     
+            break;
         case SVAR_TYPE_STRING:
             dst->str = (char*)src;
             break;
@@ -409,20 +435,45 @@ static void _copyFromUnion(system_variable_t *sv, void *dst, svar_value_t *src)
 {
     switch (sv->type)
     {
-        case SVAR_TYPE_INT8:    *(int8_t*)dst  = src->i8; break;
-        case SVAR_TYPE_UINT8:   *(uint8_t*)dst  = src->u8; break;
-        case SVAR_TYPE_INT16:   *(int16_t*)dst = src->i16; break;
-        case SVAR_TYPE_UINT16:  *(uint16_t*)dst = src->u16; break;
-        case SVAR_TYPE_INT32:   *(int32_t*)dst = src->i32; break;
-        case SVAR_TYPE_UINT32:  *(uint32_t*)dst = src->u32; break;
+        case SVAR_TYPE_INT8:    
+            *(int8_t*)dst  = src->i8; 
+            break;
+        case SVAR_TYPE_UINT8:   
+            *(uint8_t*)dst  = src->u8; 
+            break;
+        case SVAR_TYPE_INT16:   
+            *(int16_t*)dst = src->i16; 
+            break;
+        case SVAR_TYPE_UINT16:  
+            *(uint16_t*)dst = src->u16; 
+            break;
+        case SVAR_TYPE_INT32:   
+            *(int32_t*)dst = src->i32; 
+            break;
+        case SVAR_TYPE_UINT32:  
+            *(uint32_t*)dst = src->u32; 
+            break;
         #if SVAR_ENABLE_64_BIT
-        case SVAR_TYPE_INT64:   *(int64_t*)dst = src->i64; break;
-        case SVAR_TYPE_UINT64:  *(uint64_t*)dst = src->u64; break;
+        case SVAR_TYPE_INT64:   
+            *(int64_t*)dst = src->i64; 
+            break;
+        case SVAR_TYPE_UINT64:  
+            *(uint64_t*)dst = src->u64; 
+            break;
         #endif
-        case SVAR_TYPE_FLOAT:   *(float*)dst = src->f; break;
-        case SVAR_TYPE_BOOL:    *(bool*)dst = src->b; break;
-        case SVAR_TYPE_CHAR:    *(char*)dst = src->c; break;
-
+        case SVAR_TYPE_FLOAT:   
+            *(float*)dst = src->f; 
+            break;
+        case SVAR_TYPE_CHECK_BOX:
+        case SVAR_TYPE_BOOL:    
+            *(bool*)dst = src->b; 
+            break;
+        case SVAR_TYPE_COMMAND: 
+            *(bool*)dst = src->cmd; 
+            break;
+        case SVAR_TYPE_CHAR:    
+            *(char*)dst = src->c; 
+            break;
         case SVAR_TYPE_STRING:
         {
             if (dst && src->str)
@@ -706,7 +757,7 @@ int SVAR_GetIdByName(char *name)
     return FAIL; // not found
 }
 
- char* SVAR_GetName(uint32_t id)
+char* SVAR_GetName(uint32_t id)
 {
     system_variable_t *sv = _getSvarFromId(id);
 
@@ -716,6 +767,18 @@ int SVAR_GetIdByName(char *name)
     }
 
     return sv->name;
+}
+
+char *SVAR_GetPostfix(uint32_t id)
+{
+    system_variable_t *sv = _getSvarFromId(id);
+
+    if (sv == NULL)
+    {
+        return NULL;
+    }
+
+    return sv->postfix;
 }
 
 gsg_result_t SVAR_SetMin(uint32_t id, void *data)
@@ -1030,9 +1093,14 @@ void svarGetCmdHandler(char *args)
         case SVAR_TYPE_FLOAT:
 //            snprintf(response, sizeof(response), "getvar %s,%lu,%.3f", key, id, temp.f);
             break;
-
+            
+        case SVAR_TYPE_CHECK_BOX:
         case SVAR_TYPE_BOOL:
             snprintf(response, sizeof(response), "getvar %s,%lu,%u", key, id, temp.b);
+            break;
+        
+        case SVAR_TYPE_COMMAND:
+            snprintf(response, sizeof(response), "getvar %s,%lu,%u", key, id, temp.cmd);
             break;
 
         case SVAR_TYPE_CHAR:

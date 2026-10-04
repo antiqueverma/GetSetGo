@@ -3,7 +3,7 @@
 #define GPIO_H_
 
 #include <stdint.h>
-#include "stm32f4xx_hal.h"
+#include "gsg_mcu.h"
 #include "gsg_defs.h"
 
 typedef GPIO_PinState gpio_pin_state_t;

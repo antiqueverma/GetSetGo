@@ -66,6 +66,11 @@
   #endif
 #endif
 
+#if (GSG_USE_RTC == GSG_ENABLE)
+  #include "services/rtc/rtc.h"
+#endif
+
+
 #if (GSG_USE_WDT == GSG_ENABLE)
   #include "wdt.h"
 #endif
@@ -157,18 +162,22 @@
   #endif
 
   #ifdef GSG_USE_SPI 
-    #include "drv/stm32/SPI/spi.h"
+	#if (GSG_USE_SPI == GSG_ENABLE)
+		#include "drv/stm32/SPI/spi.h"
+	#endif
   #endif
 
   #ifdef GSG_USE_CAN
-    #include "drv/stm32/CAN/can.h"
+	#if (GSG_USE_CAN == GSG_ENABLE)
+    	#include "drv/stm32/CAN/can.h"
+	#endif
   #endif
   
   #ifdef GSG_USE_ADC
     #include "drv/stm32/ADC/adc.h"
   #endif
   
-  #include "port/stm32f407ve/port.h"
+  #include "gsg_mcu.h"
   
 #elif defined(GSG_PLATFORM_WINDOWS)
   // Include Windows-specific headers or definitions if needed

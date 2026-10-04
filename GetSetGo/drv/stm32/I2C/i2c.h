@@ -3,7 +3,7 @@
 #define I2C_H_
 
 #include <stdint.h>
-#include "stm32f4xx_hal.h"
+#include "gsg_mcu.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "queue.h"

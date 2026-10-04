@@ -118,6 +118,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    BaseType_t higherPriorityTaskWoken = pdFALSE;
+
+    for(int i = 0; i < PORT_PERIPHERAL_UART_COUNT; i++)
+    {
+        if(uartPorts[i] != NULL &&
+           uartPorts[i]->uartHandle == huart)
+        {
+            xSemaphoreGiveFromISR(uartPorts[i]->txCpltSema, &higherPriorityTaskWoken);
+            portYIELD_FROM_ISR(higherPriorityTaskWoken);
+            break;
+        }
+    }
+}
+
 gsg_result_t UART_writeData(void *uartCtx, uint8_t *data, uint16_t size, uint16_t timeout)
 {
     uart_port_t *uart = (uart_port_t *)uartCtx;

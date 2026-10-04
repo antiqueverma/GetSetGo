@@ -6,7 +6,7 @@
 #include "stm32f4xx_hal.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
-#include "port/port.h"
+
 #include "gsg_defs.h"
 
 typedef void (*uartRxCallback)(void *ctx, uint8_t byte);

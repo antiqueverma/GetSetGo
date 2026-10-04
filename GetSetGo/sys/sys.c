@@ -3,7 +3,10 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "stm32f4xx_hal.h"
+
+#include "gsg_mcu.h"
+
+#include "gsg_base.h"
 
 // Extern from main.c
 extern UART_HandleTypeDef huart1;
@@ -85,11 +88,6 @@ static void sysTaskHandler(void *args)
     }
 }
 
-void vApplicationTickHook( void )
-{
-    sysUpTimeCtr++;
-}
-
 uint64_t SYS_getUpTimeMs(void)
 {
     return sysUpTimeCtr;
@@ -111,4 +109,28 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
     }
     __disable_irq();
     for(;;);
+}
+
+void vApplicationTickHook( void )
+{
+    sysUpTimeCtr++;
+
+    // Get the freeRTOS tick count
+    uint32_t currTickCount = xTaskGetTickCount();
+    static uint32_t prevTickCount;
+
+    if(prevTickCount == 0)
+        prevTickCount = currTickCount;
+    
+    
+    if((currTickCount - prevTickCount) > 1000)  // 1000ms elapsed
+    {
+        prevTickCount = currTickCount;
+        #ifdef GSG_USE_RTC
+            #if (GSG_USE_RTC == GSG_ENABLE)
+            RTC_IncrementSeconds();
+            #endif
+        #endif
+    }
+
 }

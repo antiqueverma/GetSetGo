@@ -1,6 +1,4 @@
-#include "stm32f4xx.h"
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_gpio.h"
+#include "gsg_mcu.h"
 #include "gpio.h"
 
 static GPIO_TypeDef *GPIO_GetPort(gpio_pin_t pin)
@@ -12,10 +10,18 @@ static GPIO_TypeDef *GPIO_GetPort(gpio_pin_t pin)
         case 2: return GPIOC;
         case 3: return GPIOD;
         case 4: return GPIOE;
+#ifdef GPIOF
         case 5: return GPIOF;
+#endif
+#ifdef GPIOG
         case 6: return GPIOG;
+#endif
+#ifdef GPIOH
         case 7: return GPIOH;
+#endif
+#ifdef GPIOI
         case 8: return GPIOI;
+#endif
         default: return NULL;
     }
 }

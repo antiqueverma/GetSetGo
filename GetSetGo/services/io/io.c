@@ -1,10 +1,18 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "gsg_defs.h"
-#include "port/stm32f407ve/port.h"
+#include "gsg_config.h"
+#include "gsg_mcu.h"
 #include "drv/stm32/GPIO/gpio.h"
 #include "io.h"
+#include "301/CO_ODinterface.h"
+#include "OD.h"
 
+#if defined(GSG_TRACK_MEMORY_STATS) && (GSG_TRACK_MEMORY_STATS == GSG_ENABLE)
+volatile static size_t ioTaskHighWaterMark = 0;
+#endif
+
+extern OD_ATTR_RAM OD_RAM_t OD_RAM;
 
 static TaskHandle_t ioTaskHandle;
 analog_input_channel_t *analogChannels[GSG_IO_MAX_ANALOG_CHANNELS];
@@ -27,6 +35,7 @@ gsg_result_t IO_Init(void)
     }
 
     xTaskCreate(ioTaskHandler, "IO", GSG_IO_TASK_STACK_SIZE, NULL, GSG_IO_TASK_PRIORITY, &ioTaskHandle);
+    configASSERT(ioTaskHandle != NULL);
     return GSG_SUCCESS;
 }
 
@@ -52,6 +61,9 @@ static void ioTaskHandler(void *args)
 
     for(;;)
     {
+        #if defined(GSG_TRACK_MEMORY_STATS) && (GSG_TRACK_MEMORY_STATS == GSG_ENABLE)
+        ioTaskHighWaterMark = uxTaskGetStackHighWaterMark(ioTaskHandle);
+        #endif
         // Process analog data channels
         for(i = 0; i < GSG_IO_MAX_ANALOG_CHANNELS; i++)
         {
@@ -136,6 +148,33 @@ static void ioProcessAnalogChannel(analog_input_channel_t *channel)
 
         if(channel->value > channel->maxValue)
             channel->maxValue = channel->value;
+    }
+    switch(channel->channelId)
+    {
+        case 0:
+            OD_RAM.x4000_peripheralRuntmeData.CH0_DATA = channel->value;
+            break;
+        case 1:
+            OD_RAM.x4000_peripheralRuntmeData.CH1_DATA = channel->value;
+            break;
+        case 2:
+            OD_RAM.x4000_peripheralRuntmeData.CH2_DATA = channel->value;
+            break;
+        case 3:
+            OD_RAM.x4000_peripheralRuntmeData.CH3_DATA = channel->value;
+            break;
+        case 4:
+            OD_RAM.x4000_peripheralRuntmeData.CH4_DATA = channel->value;
+            break;
+        case 5:
+            OD_RAM.x4000_peripheralRuntmeData.CH5_DATA = channel->value;
+            break;
+        case 6:
+            OD_RAM.x4000_peripheralRuntmeData.CH6_DATA = channel->value;
+            break;
+        case 7:
+            OD_RAM.x4000_peripheralRuntmeData.CH7_DATA = channel->value;
+            break;
     }
 
     channel->flags.busy = 0;

@@ -23,6 +23,8 @@ TYPE_MAP = {
     'INT64':  ('SVAR_TYPE_INT64',  'i64', 8),
     'FLOAT':  ('SVAR_TYPE_FLOAT',  'f',  4),
     'BOOL':   ('SVAR_TYPE_BOOL',   'b',  1),
+    'CHECK_BOX': ('SVAR_TYPE_CHECK_BOX', 'b',  1),
+    'COMMAND': ('SVAR_TYPE_COMMAND',   'cmd',  1),
     'STRING': ('SVAR_TYPE_STRING', 'str', None),
 }
 
@@ -65,7 +67,6 @@ def log_debug_block(lines):
     for line in lines[1:]:
         print(' ' * 16 + line)
 
-
 def get_type_size(svar_type):
     """
     Return the size in bytes for a given svar_type_t.
@@ -81,12 +82,12 @@ def get_type_size(svar_type):
         'SVAR_TYPE_UINT64': 8,
         'SVAR_TYPE_FLOAT': 4,
         'SVAR_TYPE_BOOL': 1,
+        'SVAR_TYPE_COMMAND': 1,
         'SVAR_TYPE_CHAR': 1,
         'SVAR_TYPE_STRING': 256,  # Default string size
         'SVAR_TYPE_GROUP': 4,
     }
     return size_map.get(svar_type, 4)
-
 
 def get_union_field_and_cast(svar_type, value):
     """
@@ -107,13 +108,13 @@ def get_union_field_and_cast(svar_type, value):
         'SVAR_TYPE_UINT64': 'u64',
         'SVAR_TYPE_FLOAT': 'f',
         'SVAR_TYPE_BOOL': 'b',
+        'SVAR_TYPE_COMMAND': 'cmd',
         'SVAR_TYPE_CHAR': 'c',
         'SVAR_TYPE_STRING': 'str',
     }
     
     field = type_field_map.get(svar_type, 'u32')
     return field
-
 
 def get_excel_field(obj, field_names):
     """
@@ -134,7 +135,6 @@ def get_excel_field(obj, field_names):
     
     return None
 
-
 def get_excel_raw_field(obj, field_names):
     """
     Return a raw cell value using any of the field_names.
@@ -152,7 +152,6 @@ def get_excel_raw_field(obj, field_names):
 
     return None
 
-
 def sanitize_enum_name(name):
     if not name or not isinstance(name, str):
         return 'UNKNOWN'
@@ -162,7 +161,6 @@ def sanitize_enum_name(name):
     if cleaned and cleaned[0].isdigit():
         cleaned = '_' + cleaned
     return cleaned.upper()
-
 
 def get_variable_name(obj):
     """Resolve the enum/source variable name from the Name column."""
@@ -177,7 +175,6 @@ def get_variable_name(obj):
 
     return ''
 
-
 def get_display_name(obj):
     """Resolve the string used for system_variable_t.name from DisplayName."""
     value = get_excel_raw_field(obj, ['DisplayName', 'displayName', 'displayname'])
@@ -186,7 +183,6 @@ def get_display_name(obj):
 
     return str(value).strip()
 
-
 def describe_row(obj):
     row_num = obj.get('__row_num', '?') if isinstance(obj, dict) else '?'
     name = get_variable_name(obj)
@@ -194,7 +190,6 @@ def describe_row(obj):
         return f"variables row {row_num}, Name='{name}'"
 
     return f"variables row {row_num}"
-
 
 def parse_int_value(value, context, default=0):
     if value is None:
@@ -210,16 +205,13 @@ def parse_int_value(value, context, default=0):
     except (TypeError, ValueError):
         raise ValueError(f"{context}: expected integer, got {value!r}")
 
-
 def parse_int_field(obj, field_names, default=0):
     value = get_excel_raw_field(obj, field_names)
     field_label = '/'.join(field_names)
     return parse_int_value(value, f"{describe_row(obj)} field '{field_label}'", default)
 
-
 def parse_config_int(config_data, key, default=0):
     return parse_int_value(config_data.get(key), f"config field '{key}'", default)
-
 
 def get_svar_comment(obj):
     """Resolve optional enum comment text from the spreadsheet."""
@@ -229,11 +221,9 @@ def get_svar_comment(obj):
 
     return str(comment).replace('\r', ' ').replace('\n', ' ').strip()
 
-
 def c_escape_string(value):
     """Escape text for use inside a C string literal."""
     return str(value).replace('\\', '\\\\').replace('"', '\\"')
-
 
 def format_string_default(value):
     """Return spreadsheet Default text for string SVARs."""
@@ -244,7 +234,6 @@ def format_string_default(value):
 
     return str(value)
 
-
 def format_svar_name_initializer(name):
     """Return the C initializer for system_variable_t.name."""
     if name == '' or name == 'NULL':
@@ -252,6 +241,23 @@ def format_svar_name_initializer(name):
 
     return f'"{c_escape_string(name)}"'
 
+def format_optional_string_initializer(value):
+    """Return a nullable C string initializer."""
+    if value is None:
+        return 'NULL'
+
+    value = str(value).strip()
+    if value == '' or value == 'NULL':
+        return 'NULL'
+
+    return f'"{c_escape_string(value)}"'
+
+def get_precision_scale_factor(obj):
+    precision = parse_int_field(obj, ['Precision', 'precision'], 0)
+    if precision < 0:
+        raise ValueError(f"{describe_row(obj)} field 'Precision/precision': expected non-negative integer, got {precision}")
+
+    return 10 ** precision
 
 def truncate_name(name, max_length):
     """Truncate name to max_length, preserving prefix if it starts with SVAR_"""
@@ -491,7 +497,6 @@ def create_app_header(data, output_dir, config_data=None, product_name='Default'
     except Exception as e:
         log_error(f"Failed to create {header_file}: {str(e)}")
 
-
 def create_app_table(data, output_dir, config_data=None, product_name='Default', svar_offset=0, svar_name_max_length=16):
     # Sanitize product name for use in C identifiers
     product_prefix = sanitize_enum_name(product_name)
@@ -585,7 +590,9 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
             f.write('#ifdef GSG_USE_SVAR\n')
             f.write('#if (GSG_USE_SVAR == GSG_ENABLE)\n')
 
-            f.write(f'#include "svar_{product_prefix.lower()}.h"\n\n')
+            f.write(f'#include "svar_{product_prefix.lower()}.h"\n')
+            f.write(f'#include "svar_{product_prefix.lower()}_callback.h"\n\n')  # include the svar_<>_callback.h file
+            
             # f.write('#include "svar.h"\n')
             # f.write('#include "svar_internal.h"\n\n')
 
@@ -614,8 +621,17 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
                 min_val = get_excel_field(obj, ['Min'])
                 max_val = get_excel_field(obj, ['Max'])
 
-                set_cb = get_excel_field(obj, ['WriteCallback'])
+                set_cb = get_excel_field(obj, ['writeCallback'])
                 get_cb = get_excel_field(obj, ['readCallback'])
+
+                get_callback = None
+                set_callback = None
+
+                if get_cb:
+                    get_callback = f'svar_{product_prefix.lower()}_{get_cb}_getCB'
+
+                if set_cb:
+                    set_callback = f'svar_{product_prefix.lower()}_{set_cb}_setCB'
 
                 parent_name = get_excel_field(obj, ['Parent'])
                 parent_id = name_to_id.get(parent_name, 0)
@@ -628,8 +644,12 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
                 display_name = get_display_name(obj)
                 name_initializer = format_svar_name_initializer(display_name)
                 f.write(f'\t\t.name = {name_initializer},\n')
+                postfix = get_excel_raw_field(obj, ['Postfix', 'postfix'])
+                postfix_initializer = format_optional_string_initializer(postfix)
+                f.write(f'\t\t.postfix = {postfix_initializer},\n')
                 f.write(f'\t\t.type = {svar_type},\n')
                 f.write(f'\t\t.parent = {parent_id},\n')
+                f.write(f'\t\t.precScaleFactor = {get_precision_scale_factor(obj)},\n')
 
                 category_str = get_excel_field(obj, ['Category']) or 'NONE'
                 category_enum = CATEGORY_MAP.get(category_str.upper(), 'SVAR_CAT_NONE')
@@ -658,8 +678,8 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
                 f.write(f'\t\t\t.persistent = {1 if is_persistent else 0},\n')
                 f.write(f'\t\t}},\n')
 
-                f.write(f'\t\t.setCb = {"NULL" if not set_cb else set_cb},\n')
-                f.write(f'\t\t.getCb = {"NULL" if not get_cb else get_cb},\n')
+                f.write(f'\t\t.setCb = {set_callback or "NULL"},\n')
+                f.write(f'\t\t.getCb = {get_callback or "NULL"},\n')
 
                 f.write('\t},\n')
                 
@@ -680,7 +700,6 @@ def create_app_table(data, output_dir, config_data=None, product_name='Default',
 
     except Exception as e:
         log_error(f"Failed to create {source_file}: {str(e)}")
-
 
 def create_app_user(data, output_dir, product_name='Default'):
     """
@@ -735,6 +754,47 @@ def select_excel_file():
 
     return file_path
 
+def create_app_callback_header(data, output_dir, product_name='Default'):
+    """
+    Create a svar_<>_callback.h file
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    callback_header_file = os.path.join(output_dir, f'svar_{sanitize_enum_name(product_name).lower()}_callback.h')
+    product_prefix = sanitize_enum_name(product_name)
+    product_prefix_lower = sanitize_enum_name(product_name).lower()
+    product_prefix_upper = sanitize_enum_name(product_name).upper()
+    
+    try:
+        with open(callback_header_file, 'w') as f:
+            f.write(f'#ifndef SVAR_{product_prefix_upper}_CALLBACK_H_\n')
+            f.write(f'#define SVAR_{product_prefix_upper}_CALLBACK_H_\n\n')
+            f.write('#include "gsg_defs.h"\n\n')
+
+            f.write(f'/* {product_prefix_upper} SVAR Callback function prototypes */\n')
+
+            # Just mention a list of all the available readCallbacks from the loaded xlsx file, otherwise do not create the callback function prototypes
+            for obj in data:
+                var_name = get_variable_name(obj)
+                if not var_name:
+                    continue
+                sanitized_name = sanitize_enum_name(var_name)
+                callback_prefix = f'svar_{product_prefix.lower()}_{sanitized_name}'
+
+                read_cb = get_excel_field(obj, ['readCallback'])
+                write_cb = get_excel_field(obj, ['writeCallback'])
+
+                if read_cb:
+                    f.write(f'gsg_result_t svar_{product_prefix_lower}_{read_cb}_getCB(void *value);\n')
+
+                if write_cb:
+                    f.write(f'gsg_result_t svar_{product_prefix_lower}_{write_cb}_setCB(void *value);\n')
+
+            f.write(f'\n#endif /* SVAR_{product_prefix_upper}_CALLBACK_H_ */\n')
+
+        log_pass(f"Created {callback_header_file}")
+    except Exception as e:
+        log_error(f"Failed to create {callback_header_file}: {str(e)}")
+
 # Example usage
 if __name__ == "__main__":
     log_info("SVAR Code Generator Started")
@@ -772,6 +832,7 @@ if __name__ == "__main__":
     # Generate files
     create_app_header(db, output_dir, config_data, product_name, svar_offset, svar_name_max_length)
     create_app_table(db, output_dir, config_data, product_name, svar_offset, svar_name_max_length)
+    create_app_callback_header(db, output_dir, product_name)
     # create_app_user(db, output_dir, product_name)
 
     log_pass("All files generated successfully!")

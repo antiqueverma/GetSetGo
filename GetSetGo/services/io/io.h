@@ -4,6 +4,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "gsg_mcu.h"
+
 #include "drv/stm32/adc/adc.h"
 #include "drv/stm32/GPIO/gpio.h"
 

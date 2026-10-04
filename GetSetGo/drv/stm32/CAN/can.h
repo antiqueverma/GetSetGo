@@ -10,8 +10,9 @@ extern "C"
 #include <stdbool.h>
 
 #include "gsg_base.h"
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_can.h"
+
+#include "gsg_mcu.h"
+
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "semphr.h"

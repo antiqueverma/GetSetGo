@@ -1,7 +1,7 @@
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_adc.h"
+#include "gsg_mcu.h"
+
+#if defined(HAL_ADC_MODULE_ENABLED)
 #include "gsg_defs.h"
-#include "port/stm32f407ve/port.h"
 #include "adc.h"
 
 extern ADC_HandleTypeDef hadc1;
@@ -9,6 +9,12 @@ extern ADC_HandleTypeDef hadc2;
 extern ADC_HandleTypeDef hadc3;
 
 #define ADC_LOGICAL_CHANNEL_COUNT  PORT_PERIPHERAL_ADC_CHANNEL_COUNT 
+
+#if defined(GSG_MCU_STM32F1)
+#define ADC_SAMPLE_TIME  ADC_SAMPLETIME_13CYCLES_5
+#else
+#define ADC_SAMPLE_TIME  ADC_SAMPLETIME_15CYCLES
+#endif
 
 typedef struct
 {
@@ -68,7 +74,7 @@ gsg_result_t ADC_ReadChannel(uint8_t channel, adc_data_t *count)
 
     config.Channel = adcChannelMap[channel].physicalChannel;
     config.Rank = 1;
-    config.SamplingTime = ADC_SAMPLETIME_15CYCLES;
+    config.SamplingTime = ADC_SAMPLE_TIME;
 
     if(HAL_ADC_ConfigChannel(hadc, &config) != HAL_OK)
         return GSG_ERROR;
@@ -89,3 +95,5 @@ gsg_result_t ADC_ReadChannel(uint8_t channel, adc_data_t *count)
 
     return GSG_SUCCESS;
 }
+
+#endif /* HAL_ADC_MODULE_ENABLED */

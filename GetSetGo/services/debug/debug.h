@@ -1,20 +1,28 @@
 #ifndef DEBUG_H_
 #define DEBUG_H_
 
-#include "gsg_defs.h"
+#include <stdio.h>
+#include <stdarg.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "semphr.h"
 #include "stream_buffer.h"
-#include <stdarg.h>
-#include <stdio.h>
+#include "gsg_defs.h"
+#include "gsg_config.h"
 #include "services/serial/serial.h"
+
+
+#ifndef DEBUG_TX_BUFF_SIZE
+#define DEBUG_TX_BUFF_SIZE          KB_to_B(2)
+#endif
 
 // Debugger Configs
 #define DEBUG_LOG_EN                1
 #define DEBUG_TASK_PRIORITY         2
+#ifndef DEBUG_TASK_STACK_SIZE
 #define DEBUG_TASK_STACK_SIZE       512
-#define DEBUG_TX_BUFF_SIZE          KB_to_B(2)
+#endif
+
 #define DEBUG_MSG_MAX_LEN           128
 #define DEBUG_TAG_EN                1
 #define DEBUG_TIMESTAMP_EN          CONFIG_DEBUG_TIMESTAMP_ENABLE       // 0:Disable, 1:10ms, 2: 100ms, 3:1000ms 

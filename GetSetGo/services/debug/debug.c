@@ -1,6 +1,6 @@
-#include "debug.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include "debug.h"
 // Based on FreeRTOS
 /*********************************************************
  * Suggestions:
@@ -18,11 +18,20 @@ static uint64_t                 debugTagMask; // All enabled by default
 static uint8_t                  debugLevelMax;
 static bool                     debugReady = false;
 static char                     debugMsgBuff[DEBUG_MSG_MAX_LEN];
-static uint8_t                  debugBuffOverrun = 0;
+
+#if defined(GSG_TRACK_MEMORY_STATS) && (GSG_TRACK_MEMORY_STATS == GSG_ENABLE)
+volatile static size_t                   debugTxBuffHighWaterMark = 0;
+volatile static size_t                   debugTaskHighWaterMark = 0;
+#endif
 
 #define DEBUG_LOG_ENABLE(tagId) (debugTagMask |= (1UL << (tagId)))
 #define DEBUG_LOG_DISABLE(tagId) (debugTagMask &= ~(1UL << (tagId)))
 #define DEBUG_LOG_IS_ENABLED(tagId) ((debugTagMask >> (tagId)) & 0x1)
+
+// Must cover the time to shift out DEBUG_MSG_MAX_LEN bytes at the UART baud rate
+#ifndef DEBUG_PORT_TX_TIMEOUT_MS
+#define DEBUG_PORT_TX_TIMEOUT_MS 500
+#endif
 
 // Private Function Prototypes
 static void debugTask(void *arg);
@@ -83,15 +92,18 @@ static void debugTask(void *arg)
     
     while (1)
     {
-        len = xStreamBufferReceive(debugStreamHandle, txBuffer, sizeof(txBuffer), portMAX_DELAY);
+        #if defined(GSG_TRACK_MEMORY_STATS) && (GSG_TRACK_MEMORY_STATS == GSG_ENABLE)
+        debugTaskHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+        #endif
 
+        len = xStreamBufferReceive(debugStreamHandle, txBuffer, sizeof(txBuffer), portMAX_DELAY);
         if(len > 0)
         {
             if(debugPort != NULL)
             {
                 if(SER_acquirePort(debugPort, portMAX_DELAY) == GSG_SUCCESS)
                 {
-                    debugPort->sendData(debugPort->context, txBuffer, len, 100);
+                    debugPort->sendData(debugPort->context, txBuffer, len, DEBUG_PORT_TX_TIMEOUT_MS);
                     SER_releasePort(debugPort);
                 }
             }
@@ -162,8 +174,16 @@ void debugLog(debugTagId_t tagId, char level, const char *tag, const char *fmt, 
                 offset += len;
         }
     }
-    if(xStreamBufferSend(debugStreamHandle, msgBuff, offset, 0) == 0)
-        debugBuffOverrun++;
+    xStreamBufferSend(debugStreamHandle, msgBuff, offset, 10);
+    
+    #if (GSG_TRACK_MEMORY_STATS == GSG_ENABLE)
+    size_t current = xStreamBufferBytesAvailable(debugStreamHandle);
+    if(current > debugTxBuffHighWaterMark)
+    {
+        debugTxBuffHighWaterMark = current;
+    }
+    #endif
+
     xSemaphoreGive(debugLogMutex);
 }
 void debugLogRaw(const char *fmt, ...)
@@ -187,8 +207,16 @@ void debugLogRaw(const char *fmt, ...)
         if (bytes >= DEBUG_MSG_MAX_LEN)
             bytes = DEBUG_MSG_MAX_LEN - 1;
 
-        xStreamBufferSend(debugStreamHandle, msgBuff, bytes, 0);
+        xStreamBufferSend(debugStreamHandle, msgBuff, bytes, 10);
     }
+
+    #if defined(GSG_TRACK_MEMORY_STATS) && (GSG_TRACK_MEMORY_STATS == GSG_ENABLE)
+    size_t current = xStreamBufferBytesAvailable(debugStreamHandle);
+    if(current > debugTxBuffHighWaterMark)
+    {
+        debugTxBuffHighWaterMark = current;
+    }
+    #endif
 
     xSemaphoreGive(debugLogMutex);
 }

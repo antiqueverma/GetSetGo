@@ -20,6 +20,8 @@ gsg_result_t SVAR_GetMin(uint32_t id, void *data);
 gsg_result_t SVAR_GetMax(uint32_t id, void *data);
 gsg_result_t SVAR_GetDefault(uint32_t id, void *data);
 gsg_result_t SVAR_GetType(uint32_t id, svar_type_t *type);
+char* SVAR_GetName(uint32_t id);
+char* SVAR_GetPostfix(uint32_t id);
 
 gsg_result_t SVAR_registerSetCallback(uint32_t id, svar_set_callback_t cb);
 gsg_result_t SVAR_registerGetCallback(uint32_t id, svar_get_callback_t cb);

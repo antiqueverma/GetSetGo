@@ -79,7 +79,7 @@ gsg_result_t CAN_Init(can_port_t *can, CAN_HandleTypeDef *instance)
     filter.FilterIdLow = 0;
     filter.FilterMaskIdHigh = 0;
     filter.FilterMaskIdLow = 0;
-    filter.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+    filter.FilterFIFOAssignment = CAN_FILTER_FIFO1;
     filter.FilterActivation = ENABLE;
     filter.SlaveStartFilterBank = 14;
 
@@ -87,7 +87,15 @@ gsg_result_t CAN_Init(can_port_t *can, CAN_HandleTypeDef *instance)
         return GSG_ERROR;
 
     if(HAL_CAN_Start(can->canHandle) != HAL_OK)
+    {
+        DEBUG_LOGE(DEBUG_TAG_CAN,
+               "CAN",
+               "HAL_CAN_Start failed: err=0x%08lX state=%d MSR=0x%08lX (check RX/PA11 idle level, transceiver)",
+               HAL_CAN_GetError(can->canHandle),
+               (int)HAL_CAN_GetState(can->canHandle),
+               (unsigned long)can->canHandle->Instance->MSR);
         return GSG_ERROR;
+    }
     
     DEBUG_LOGI(DEBUG_TAG_CAN,
            "CAN",
@@ -95,7 +103,8 @@ gsg_result_t CAN_Init(can_port_t *can, CAN_HandleTypeDef *instance)
            HAL_CAN_GetTxMailboxesFreeLevel(can->canHandle));
 
     if(HAL_CAN_ActivateNotification(can->canHandle,
-            CAN_IT_RX_FIFO0_MSG_PENDING |
+            CAN_IT_RX_FIFO1_MSG_PENDING |
+            CAN_IT_RX_FIFO1_OVERRUN |
             // CAN_IT_TX_MAILBOX_EMPTY |
             CAN_IT_ERROR |
             CAN_IT_BUSOFF) != HAL_OK)
@@ -152,4 +161,45 @@ gsg_result_t CAN_SendFrame(can_port_t *can, const can_frame_t *frame, uint32_t t
     _can_releaseLock(can);
 
     return GSG_SUCCESS;
+}
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+    BaseType_t higherPriorityTaskWoken = pdFALSE;
+    CAN_RxHeaderTypeDef rxHeader;
+    can_frame_t frame;
+    uint8_t i;
+
+    for(i = 0; i < PORT_PERIPHERAL_CAN_COUNT; i++)
+    {
+        if(canPorts[i] != NULL && canPorts[i]->canHandle == hcan)
+            break;
+    }
+
+    if(i >= PORT_PERIPHERAL_CAN_COUNT || canPorts[i]->rxQueue == NULL)
+        return;
+
+    while(HAL_CAN_GetRxFifoFillLevel(hcan, CAN_RX_FIFO1) > 0U)
+    {
+        if(HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &rxHeader, frame.data) != HAL_OK)
+            break;
+
+        if(rxHeader.IDE == CAN_ID_STD)
+        {
+            frame.id = rxHeader.StdId;
+            frame.idType = CAN_ID_STANDARD;
+        }
+        else
+        {
+            frame.id = rxHeader.ExtId;
+            frame.idType = CAN_ID_EXTENDED;
+        }
+
+        frame.frameType = (rxHeader.RTR == CAN_RTR_DATA) ? CAN_FRAME_DATA : CAN_FRAME_REMOTE;
+        frame.dlc = (uint8_t)rxHeader.DLC;
+
+        // Drop the frame if the queue is full; the ISR must never block
+        xQueueSendFromISR(canPorts[i]->rxQueue, &frame, &higherPriorityTaskWoken);
+    }
+
+    portYIELD_FROM_ISR(higherPriorityTaskWoken);
 }
