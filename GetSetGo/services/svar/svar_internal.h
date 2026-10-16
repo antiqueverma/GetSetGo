@@ -120,11 +120,19 @@ typedef struct {
     uint8_t                 __reserved;
 } system_variable_t;
 
+// canId is the CANopen OD object id: (OD index << 8) | OD sub-index
+typedef struct {
+    uint32_t          id;
+    uint32_t          canId;
+} svar_can_map_t;
+
 typedef struct {
     const system_variable_t *table;
     const uint16_t count;
     const uint16_t varOffset;
     nvm_device_t *nvmHandle;
+    const svar_can_map_t *canMap;
+    uint16_t canMapCount;
 } svar_module_t;
 
 #endif /* SVAR_INTERNAL_H_ */

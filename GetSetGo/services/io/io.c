@@ -5,14 +5,32 @@
 #include "gsg_mcu.h"
 #include "drv/stm32/GPIO/gpio.h"
 #include "io.h"
-#include "301/CO_ODinterface.h"
-#include "OD.h"
+
+#ifndef GSG_IO_ADC_VREF_PLUS_uV 
+    #error "GSG_IO_ADC_VREF_PLUS_uV not defined in gsg_config.h"
+#elif (GSG_IO_ADC_VREF_PLUS_uV <= 0)
+    #error "GSG_IO_ADC_VREF_PLUS_uV must be greater than 0"
+#endif
+
+#ifndef PORT_PERIPHERAL_ADC_RESOLUTION
+    #error "PORT_PERIPHERAL_ADC_RESOLUTION not defined in port.h"
+#elif ((PORT_PERIPHERAL_ADC_RESOLUTION <= 0) || (PORT_PERIPHERAL_ADC_RESOLUTION > 32))
+    #error "PORT_PERIPHERAL_ADC_RESOLUTION must be a valid resolution value greater than 0"
+#else
+    #define IO_ADC_MAX_COUNT            ((UINT64_C(1) << PORT_PERIPHERAL_ADC_RESOLUTION) - UINT64_C(1))
+    #define IO_ADC_ROUNDING_BIAS        (IO_ADC_MAX_COUNT / 2)
+#endif
+
+#ifndef GSG_IO_ANALOG_CONTINUOUS_CONVERSION
+    #error "GSG_IO_ANALOG_CONTINUOUS_CONVERSION not defined in gsg_config.h"
+#endif
+
+#define IO_CAL_ROUNDING_BIAS                500
+#define GSG_IO_PRECISION_ROUNDING_BIAS      500000
 
 #if defined(GSG_TRACK_MEMORY_STATS) && (GSG_TRACK_MEMORY_STATS == GSG_ENABLE)
 volatile static size_t ioTaskHighWaterMark = 0;
 #endif
-
-extern OD_ATTR_RAM OD_RAM_t OD_RAM;
 
 static TaskHandle_t ioTaskHandle;
 analog_input_channel_t *analogChannels[GSG_IO_MAX_ANALOG_CHANNELS];
@@ -48,9 +66,9 @@ static gsg_result_t IO_WriteAnalogChannel(uint8_t channelId, adc_data_t rawData)
     if(analogChannels[channelId] == NULL)
         return GSG_NOT_FOUND;
 
-    analogChannels[channelId]->count    = rawData;
-    analogChannels[channelId]->minCount = (analogChannels[channelId]->minCount < rawData) ? analogChannels[channelId]->minCount : rawData;
-    analogChannels[channelId]->maxCount = (analogChannels[channelId]->maxCount > rawData) ? analogChannels[channelId]->maxCount : rawData;
+    analogChannels[channelId]->data.rawCount    = rawData;
+    analogChannels[channelId]->data.minCount = (analogChannels[channelId]->data.minCount < rawData) ? analogChannels[channelId]->data.minCount : rawData;
+    analogChannels[channelId]->data.maxCount = (analogChannels[channelId]->data.maxCount > rawData) ? analogChannels[channelId]->data.maxCount : rawData;
     return GSG_SUCCESS;
 }
 
@@ -64,7 +82,9 @@ static void ioTaskHandler(void *args)
         #if defined(GSG_TRACK_MEMORY_STATS) && (GSG_TRACK_MEMORY_STATS == GSG_ENABLE)
         ioTaskHighWaterMark = uxTaskGetStackHighWaterMark(ioTaskHandle);
         #endif
-        // Process analog data channels
+
+        #if (GSG_IO_ANALOG_CONTINUOUS_CONVERSION)
+        // Process analog data channels continuously
         for(i = 0; i < GSG_IO_MAX_ANALOG_CHANNELS; i++)
         {
             if(analogChannels[i] != NULL && analogChannels[i]->flags.enable)
@@ -72,6 +92,17 @@ static void ioTaskHandler(void *args)
                 ioProcessAnalogChannel(analogChannels[i]);
             }
         }
+        #else 
+        #error "IO Module One-shot conversion mode is currently under development"
+        // Process analog data channels on demand
+        uint32_t channelToConvert = 0xFF;
+        xTaskNotifyWait(0, ULONG_MAX, &channelToConvert, portMAX_DELAY);
+        if((channelToConvert < GSG_IO_MAX_ANALOG_CHANNELS) && (analogChannels[channelToConvert] != NULL) && (analogChannels[channelToConvert]->flags.enable))
+        {
+            // Handle the notification value if needed
+            ioProcessAnalogChannel(analogChannels[channelToConvert]);
+        }
+        #endif
 
         // Process digital input channels
         for(uint8_t i = 0; i < GSG_IO_MAX_DIGITAL_CHANNELS; i++)
@@ -82,42 +113,52 @@ static void ioTaskHandler(void *args)
             }
         }
 
-        vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(GSG_IO_TASK_PERIOD_MS));
+        vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(GSG_IO_CONTINUOUS_MODE_PERIOD_MS));
     }
 }
 
 static void ioProcessAnalogChannel(analog_input_channel_t *channel)
 {
-    analog_data_t calibratedValue;
+    int64_t calibratedValue;
     gsg_result_t result;
 
-    result = ADC_ReadChannel(channel->channelId, &channel->count);
+    channel->flags.busy = 1;
+    result = ADC_ReadChannel(channel->channelId, &channel->data.rawCount);
     if(result != GSG_SUCCESS)
     {
         channel->flags.error = 1;
         channel->flags.busy = 0;
         return;
     }
-
-    channel->flags.busy = 1;
+    
+    channel->flags.error = 0;
 
     if(channel->flags.firstSample)
     {
-        channel->filteredCount = channel->count;
+        channel->data.filteredCount = channel->data.rawCount;
 
         // Convert ADC count to voltage in µV
-        channel->convertedValue = (analog_data_t)(((int64_t)channel->filteredCount * 3300000 + 2047) / 4095);
+        channel->data.adcVoltage_uV = (analog_data_t)(((int64_t)channel->data.filteredCount * GSG_IO_ADC_VREF_PLUS_uV + IO_ADC_ROUNDING_BIAS) / IO_ADC_MAX_COUNT);
 
-        calibratedValue = (analog_data_t)(((int64_t)channel->convertedValue * channel->calGain + 500) / 1000);
+        calibratedValue = ((int64_t)channel->data.adcVoltage_uV) * channel->calGain_x1000;
+        if(calibratedValue < 0)
+            calibratedValue = (calibratedValue - IO_CAL_ROUNDING_BIAS) / 1000; // Rounding off
+        else
+            calibratedValue = (calibratedValue + IO_CAL_ROUNDING_BIAS) / 1000; // Rounding off
         calibratedValue += channel->calOffset;
 
         // Apply output precision
-        channel->value = (analog_data_t)(((int64_t)calibratedValue * channel->precision + 500000) / 1000000);
+        int64_t scaledValue = calibratedValue * channel->precision;
+        if(scaledValue < 0)
+            scaledValue = (scaledValue - GSG_IO_PRECISION_ROUNDING_BIAS) / 1000000; // Rounding off
+        else
+            scaledValue = (scaledValue + GSG_IO_PRECISION_ROUNDING_BIAS) / 1000000; // Rounding off
+        channel->data.value = (analog_data_t)scaledValue; // Copy the scaled value to the channel data
 
-        channel->minCount = channel->count;
-        channel->maxCount = channel->count;
-        channel->minValue = channel->value;
-        channel->maxValue = channel->value;
+        channel->data.minCount = channel->data.rawCount;
+        channel->data.maxCount = channel->data.rawCount;
+        channel->data.minValue = channel->data.value;
+        channel->data.maxValue = channel->data.value;
 
         channel->flags.firstSample = 0;
     }
@@ -125,59 +166,41 @@ static void ioProcessAnalogChannel(analog_input_channel_t *channel)
     {
         // Apply Exponential Moving Average (EMA) filter to the raw ADC count
         // EMA y[n] = α * x[n] + (1 - α) * y[n-1]
-        channel->filteredCount += (analog_data_t)(((int64_t)((int64_t)channel->count - channel->filteredCount) * channel->emaAlpha) / 1000);
+        channel->data.filteredCount += (analog_data_t)(((int64_t)((int64_t)channel->data.rawCount - channel->data.filteredCount) * channel->emaAlpha_x1000) / 1000);
 
         // Convert ADC count to voltage in µV
-        channel->convertedValue = (analog_data_t)(((int64_t)channel->filteredCount * 3300000 + 2047) / 4095);
+        channel->data.adcVoltage_uV = (analog_data_t)(((int64_t)channel->data.filteredCount * GSG_IO_ADC_VREF_PLUS_uV + IO_ADC_ROUNDING_BIAS) / IO_ADC_MAX_COUNT);
 
         // Apply calibration
-        calibratedValue = (analog_data_t)(((int64_t)channel->convertedValue * channel->calGain + 500) / 1000); // Rounding off
+        calibratedValue = ((int64_t)channel->data.adcVoltage_uV) * channel->calGain_x1000; 
+        if(calibratedValue < 0)
+            calibratedValue = (calibratedValue - IO_CAL_ROUNDING_BIAS) / 1000; // Rounding off
+        else
+            calibratedValue = (calibratedValue + IO_CAL_ROUNDING_BIAS) / 1000; // Rounding off
         calibratedValue += channel->calOffset;
 
         // Apply output precision
-        channel->value = (analog_data_t)(((int64_t)calibratedValue * channel->precision + 500000) / 1000000);
+        int64_t scaledValue = calibratedValue * channel->precision;
+        if(scaledValue < 0)
+            scaledValue = (scaledValue - GSG_IO_PRECISION_ROUNDING_BIAS) / 1000000; // Rounding off
+        else
+            scaledValue = (scaledValue + GSG_IO_PRECISION_ROUNDING_BIAS) / 1000000; // Rounding off
+        channel->data.value = (analog_data_t)scaledValue; // Rounding off
 
-        if(channel->count < channel->minCount)
-            channel->minCount = channel->count;
+        if(channel->data.rawCount < channel->data.minCount)
+            channel->data.minCount = channel->data.rawCount;
 
-        if(channel->count > channel->maxCount)
-            channel->maxCount = channel->count;
+        if(channel->data.rawCount > channel->data.maxCount)
+            channel->data.maxCount = channel->data.rawCount;
 
-        if(channel->value < channel->minValue)
-            channel->minValue = channel->value;
+        if(channel->data.value < channel->data.minValue)
+            channel->data.minValue = channel->data.value;
 
-        if(channel->value > channel->maxValue)
-            channel->maxValue = channel->value;
+        if(channel->data.value > channel->data.maxValue)
+            channel->data.maxValue = channel->data.value;
     }
-    switch(channel->channelId)
-    {
-        case 0:
-            OD_RAM.x4000_peripheralRuntmeData.CH0_DATA = channel->value;
-            break;
-        case 1:
-            OD_RAM.x4000_peripheralRuntmeData.CH1_DATA = channel->value;
-            break;
-        case 2:
-            OD_RAM.x4000_peripheralRuntmeData.CH2_DATA = channel->value;
-            break;
-        case 3:
-            OD_RAM.x4000_peripheralRuntmeData.CH3_DATA = channel->value;
-            break;
-        case 4:
-            OD_RAM.x4000_peripheralRuntmeData.CH4_DATA = channel->value;
-            break;
-        case 5:
-            OD_RAM.x4000_peripheralRuntmeData.CH5_DATA = channel->value;
-            break;
-        case 6:
-            OD_RAM.x4000_peripheralRuntmeData.CH6_DATA = channel->value;
-            break;
-        case 7:
-            OD_RAM.x4000_peripheralRuntmeData.CH7_DATA = channel->value;
-            break;
-    }
-
     channel->flags.busy = 0;
+    IO_analogConvCpltCallback(channel->channelId, &channel->data);
 }
 
 static void ioProcessDigitalChannel(digital_input_channel_t *channel)
@@ -202,7 +225,7 @@ static void ioProcessDigitalChannel(digital_input_channel_t *channel)
         return;
     }
 
-    channel->debounceElapsedMs += GSG_IO_TASK_PERIOD_MS;
+    channel->debounceElapsedMs += GSG_IO_CONTINUOUS_MODE_PERIOD_MS;
 
     if(channel->debounceElapsedMs >= channel->debounceTimeMs)
     {
@@ -226,20 +249,20 @@ gsg_result_t IO_ConfigureAnalogChannel(uint8_t channelId, uint16_t gain, analog_
             return GSG_OVERFLOW;
 
         analogChannels[channelId]->channelId = channelId;
-        analogChannels[channelId]->emaAlpha         = GSG_IO_DEFAULT_EMA_ALPHA;      // Default α = 0.1
+        analogChannels[channelId]->emaAlpha_x1000         = GSG_IO_DEFAULT_EMA_ALPHA;      // Default α = 0.1
         
         analogChannels[channelId]->precision        = precision;  
-        analogChannels[channelId]->calGain          = gain;     
+        analogChannels[channelId]->calGain_x1000    = gain;     
         analogChannels[channelId]->calOffset        = offset;   
 
-        analogChannels[channelId]->count            = 0;
-        analogChannels[channelId]->maxCount         = 0;
-        analogChannels[channelId]->minCount         = 0;
-        analogChannels[channelId]->filteredCount    = 0;
+        analogChannels[channelId]->data.rawCount            = 0;
+        analogChannels[channelId]->data.maxCount         = 0;
+        analogChannels[channelId]->data.minCount         = 0;
+        analogChannels[channelId]->data.filteredCount    = 0;
 
-        analogChannels[channelId]->value            = 0;
-        analogChannels[channelId]->minValue         = 0;
-        analogChannels[channelId]->maxValue         = 0;
+        analogChannels[channelId]->data.value            = 0;
+        analogChannels[channelId]->data.minValue         = 0;
+        analogChannels[channelId]->data.maxValue         = 0;
 
         analogChannels[channelId]->flags.busy       = 0;
         analogChannels[channelId]->flags.error      = 0;
@@ -258,13 +281,14 @@ gsg_result_t IO_ConfigureAnalogEMA(uint8_t channelId, uint16_t alpha)
     if(analogChannels[channelId] == NULL)
         return GSG_NOT_FOUND;
 
-    analogChannels[channelId]->emaAlpha = alpha;
+    analogChannels[channelId]->emaAlpha_x1000 = alpha;
 
     return GSG_SUCCESS;
 }
 
 gsg_result_t IO_GetAnalogValue(uint8_t channelId, analog_data_t *value)
 {
+    #if (GSG_IO_ANALOG_CONTINUOUS_CONVERSION)
     if((channelId >= GSG_IO_MAX_ANALOG_CHANNELS) || (value == NULL))
         return GSG_INVALID_ARG;
 
@@ -274,8 +298,15 @@ gsg_result_t IO_GetAnalogValue(uint8_t channelId, analog_data_t *value)
     if(analogChannels[channelId]->flags.error)
         return GSG_ERROR;
 
-    *value = analogChannels[channelId]->value;
+    *value = analogChannels[channelId]->data.value;
     return GSG_SUCCESS;
+    #else
+    Notify the Io Task to perform a one-shot conversion for the specified channel
+    xTaskNotify(ioTaskHandle, (uint32_t)channelId, eNoAction);
+    // Wait for conversion complete notification
+    xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
+    return GSG_SUCCESS;
+    #endif
 }
 
 gsg_result_t IO_GetAnalogMinMaxValues(uint8_t channelId, analog_data_t *minValue, analog_data_t *maxValue)
@@ -289,8 +320,8 @@ gsg_result_t IO_GetAnalogMinMaxValues(uint8_t channelId, analog_data_t *minValue
     if(analogChannels[channelId]->flags.error)
         return GSG_ERROR;
 
-    *minValue = analogChannels[channelId]->minValue;
-    *maxValue = analogChannels[channelId]->maxValue;
+    *minValue = analogChannels[channelId]->data.minValue;
+    *maxValue = analogChannels[channelId]->data.maxValue;
     return GSG_SUCCESS;
 }
 
@@ -305,7 +336,7 @@ gsg_result_t IO_GetAnalogCount(uint8_t channelId, adc_data_t *count)
     if(analogChannels[channelId]->flags.error)
         return GSG_ERROR;
 
-    *count = analogChannels[channelId]->count;
+    *count = analogChannels[channelId]->data.rawCount;
     return GSG_SUCCESS;
 }
 
@@ -320,8 +351,22 @@ gsg_result_t IO_GetAnalogMinMaxCounts(uint8_t channelId, adc_data_t *minCount, a
     if(analogChannels[channelId]->flags.error)
         return GSG_ERROR;
 
-    *minCount = analogChannels[channelId]->minCount;
-    *maxCount = analogChannels[channelId]->maxCount;
+    *minCount = analogChannels[channelId]->data.minCount;
+    *maxCount = analogChannels[channelId]->data.maxCount;
+    return GSG_SUCCESS;
+}
+
+gsg_result_t IO_setAnalogCalibration(uint8_t channelId, int32_t gain_x1000, analog_data_t offset)
+{
+    if(channelId >= GSG_IO_MAX_ANALOG_CHANNELS)
+        return GSG_INVALID_ARG;
+
+    if(analogChannels[channelId] == NULL)
+        return GSG_NOT_FOUND;
+    
+    analogChannels[channelId]->calGain_x1000 = gain_x1000;
+    analogChannels[channelId]->calOffset = offset;
+
     return GSG_SUCCESS;
 }
 
@@ -421,5 +466,9 @@ gsg_result_t IO_ConfigureDigitalChannel(gpio_pin_t inputPin, uint16_t debounceTi
     return GSG_OVERFLOW;
 }
 
-
+__weak void IO_analogConvCpltCallback(uint8_t channelId, const analog_input_channel_data_t *chData)
+{
+    (void)channelId;
+    (void)chData;
+}
 

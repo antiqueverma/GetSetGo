@@ -80,6 +80,8 @@ typedef enum {
 #define PORT_PERIPHERAL_GPI_CHANNEL_COUNT     100
 #define PORT_PERIPHERAL_GPO_CHANNEL_COUNT     100
 
+#define PORT_PERIPHERAL_ADC_RESOLUTION          12          // Resolution in bits
+
 extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi2;
 extern SPI_HandleTypeDef hspi3;

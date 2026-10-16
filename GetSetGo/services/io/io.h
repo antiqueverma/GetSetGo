@@ -12,7 +12,6 @@
 
 #define GSG_IO_TASK_STACK_SIZE  256
 #define GSG_IO_TASK_PRIORITY    7
-#define GSG_IO_TASK_PERIOD_MS   10
 
 #define GSG_IO_MAX_DIGITAL_CHANNELS 10
 #define GSG_IO_MAX_ANALOG_CHANNELS  PORT_PERIPHERAL_ADC_CHANNEL_COUNT
@@ -36,20 +35,23 @@ typedef struct {
 } io_ch_flags_t;
 
 typedef struct {
-    adc_data_t      count;
+    adc_data_t      rawCount;
+    adc_data_t      filteredCount;
     adc_data_t      maxCount;
     adc_data_t      minCount;
-    adc_data_t      filteredCount;
     
-    analog_data_t   convertedValue; // ADC voltage in µV
+    analog_data_t   adcVoltage_uV; // ADC voltage in µV
     analog_data_t   value;
     analog_data_t   maxValue;
     analog_data_t   minValue;
-    analog_data_t   calOffset;
+} analog_input_channel_data_t;
 
+typedef struct {
+    analog_input_channel_data_t   data;
+    analog_data_t   calOffset;
     uint16_t        precision;  // Output scaling, max = 10000
-    uint16_t        calGain;    // Gain × 1000
-    uint16_t        emaAlpha;   // Alpha × 1000
+    int32_t         calGain_x1000;    // Gain × 1000
+    uint16_t        emaAlpha_x1000;   // Alpha × 1000
     uint8_t         channelId;
     io_ch_flags_t   flags;
 } analog_input_channel_t;
@@ -73,5 +75,7 @@ gsg_result_t IO_ConfigureDigitalChannel(gpio_pin_t inputPin, uint16_t debounceTi
 gsg_result_t IO_GetDigitalStateByPin(gpio_pin_t inputPin, gpio_pin_state_t *state);
 gsg_result_t IO_GetDigitalIndexByPin(gpio_pin_t inputPin, uint8_t *idx);
 gsg_result_t IO_Init(void);
+gsg_result_t IO_setAnalogCalibration(uint8_t channelId, int32_t gain_x1000, analog_data_t offset);
+void IO_analogConvCpltCallback(uint8_t channelId, const analog_input_channel_data_t *chData);
 
 #endif /* IO_H_ */

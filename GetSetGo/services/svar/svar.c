@@ -624,10 +624,7 @@ gsg_result_t SVAR_Get(uint32_t id, void *data)
     }
 
     system_variable_t *sv = _getSvarFromId(id);
-    if (sv == NULL)
-    {
-        return GSG_NOT_FOUND;
-    }
+    configASSERT(sv != NULL);   // Ensure the system variable exists in any registered module
 
     svar_value_t temp;
     gsg_result_t result = _getValue(sv, &temp);
@@ -977,8 +974,43 @@ gsg_result_t SVAR_attachStorage(svar_module_t *module, nvm_device_t *nvm)
     return GSG_SUCCESS;
 }
 
+gsg_result_t SVAR_attachCanMap(svar_module_t *module, const svar_can_map_t *map, uint16_t count)
+{
+    if (module == NULL || map == NULL || count == 0)
+        return GSG_INVALID_ARG;
+
+    module->canMap = map;
+    module->canMapCount = count;
+
+    return GSG_SUCCESS;
+}
+
+// Looks up the CAN OD object id in the CAN maps of all registered modules
+gsg_result_t SVAR_GetIdFromCanId(uint32_t canId, uint32_t *id)
+{
+    if (id == NULL)
+        return GSG_INVALID_ARG;
+
+    for (uint16_t i = 0; i < SVAR_MAX_MODULES; i++)
+    {
+        const svar_module_t *module = svarModulesRegistry[i];
+        if (module == NULL || module->canMap == NULL)
+            continue;
+
+        for (uint16_t j = 0; j < module->canMapCount; j++)
+        {
+            if (module->canMap[j].canId == canId)
+            {
+                *id = module->canMap[j].id;
+                return GSG_SUCCESS;
+            }
+        }
+    }
+    return GSG_NOT_FOUND;
+}
+
 /***************************************************************************************************************
- * Sample command: <command> <key>,<id>,<value>  
+ * Sample command:  <command> <key>,<id>,<value>
  * Command => "setvar" "getvar"
  * key => "val" "def" "min" "max" "name"
  * id => svarId
