@@ -496,7 +496,19 @@ static void _initModule(svar_module_t *module)
     {
         system_variable_t *sv = &module->table[i];
         // copy default to value
-        sv->value = sv->def;
+        if (sv->type == SVAR_TYPE_STRING)
+        {
+            // value.str points to the svar's RAM buffer; copy the default into it instead of replacing the pointer
+            if (sv->value.str != NULL && sv->def.str != NULL && sv->max.u16 > 0)
+            {
+                strncpy(sv->value.str, sv->def.str, sv->max.u16);
+                sv->value.str[sv->max.u16 - 1] = '\0';
+            }
+        }
+        else
+        {
+            sv->value = sv->def;
+        }
 
         // load from NVM if persistent
         if (sv->flags.persistent == 1)
@@ -639,6 +651,144 @@ gsg_result_t SVAR_Get(uint32_t id, void *data)
     }
 
     _copyFromUnion(sv, data, &temp);
+    return GSG_SUCCESS;
+}
+
+gsg_result_t SVAR_GetString(uint32_t id, void *data, uint16_t offset, uint16_t maxLen, uint16_t *copiedLen)
+{
+    if ((data == NULL) || (copiedLen == NULL) || (maxLen == 0U))
+    {
+        return GSG_INVALID_ARG;
+    }
+
+    *copiedLen = 0U;
+
+    system_variable_t *sv = _getSvarFromId(id);
+    if (sv == NULL)
+    {
+        return GSG_NOT_FOUND;
+    }
+
+    if (sv->type != SVAR_TYPE_STRING)
+    {
+        return GSG_INVALID_ARG;
+    }
+
+    svar_value_t temp;
+    gsg_result_t result = _getValue(sv, &temp);
+    if (result != GSG_SUCCESS)
+    {
+        return result;
+    }
+
+    if (sv->getCb != NULL)
+    {
+        sv->getCb(&temp);
+    }
+
+    if (temp.str == NULL)
+    {
+        return GSG_ERROR;
+    }
+
+    uint16_t capacity = sv->max.u16;
+
+    /* Find the string length without exceeding configured capacity. */
+    uint16_t strLen = 0U;
+
+    while ((strLen < capacity) && (temp.str[strLen] != '\0'))
+    {
+        strLen++;
+    }
+
+    /* Offset is at or beyond the end of the string. */
+    if (offset >= strLen)
+    {
+        return GSG_SUCCESS;
+    }
+
+    uint16_t remaining = strLen - offset;
+    uint16_t len = (maxLen < remaining) ? maxLen : remaining;
+
+    memcpy(data, &temp.str[offset], len);
+
+    *copiedLen = len;
+
+    return GSG_SUCCESS;
+}
+
+gsg_result_t SVAR_SetString(uint32_t id, const void *data, uint16_t offset, uint16_t len, uint16_t *copiedLen)
+{
+    if ((data == NULL) || (copiedLen == NULL) || (len == 0U))
+    {
+        return GSG_INVALID_ARG;
+    }
+
+    *copiedLen = 0U;
+
+    system_variable_t *sv = _getSvarFromId(id);
+    if (sv == NULL)
+    {
+        return GSG_NOT_FOUND;
+    }
+
+    if (sv->type != SVAR_TYPE_STRING)
+    {
+        return GSG_INVALID_ARG;
+    }
+
+    if (sv->value.str == NULL)
+    {
+        return GSG_ERROR;
+    }
+
+    uint16_t capacity = sv->max.u16;
+
+    /*
+     * Reserve one byte for the terminating NUL.
+     * String capacity includes the NUL terminator.
+     */
+    if ((capacity == 0U) || (offset >= (capacity - 1U)))
+    {
+        return GSG_INVALID_ARG;
+    }
+
+    uint16_t available = (capacity - 1U) - offset;
+    uint16_t copyLen = (len < available) ? len : available;
+
+    if (copyLen == 0U)
+    {
+        return GSG_SUCCESS;
+    }
+
+    if (!_svarGetLock())
+    {
+        return GSG_BUSY;
+    }
+
+    memcpy(&sv->value.str[offset], data, copyLen);
+
+    /* Keep the string NUL-terminated. */
+    sv->value.str[offset + copyLen] = '\0';
+
+    _svarReleaseLock();
+
+    *copiedLen = copyLen;
+
+    svar_module_t *module = _getModuleFromId(id);
+
+    if (sv->flags.persistent == 1U)
+    {
+        _nvmWrite(module, sv);
+    }
+
+    if (sv->setCb != NULL)
+    {
+        sv->setCb(&sv->value);
+    }
+
+    _genericSetCb(sv);
+
     return GSG_SUCCESS;
 }
 

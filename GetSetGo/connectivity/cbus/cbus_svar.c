@@ -44,21 +44,45 @@ static ODR_t cbusSvarRead(OD_stream_t *stream, void *buf, OD_size_t count, OD_si
     {
         return OD_readOriginal(stream, buf, count, countRead);  // Not mapped to SVAR, use OD
     }
-
-    uint8_t tmp[8] = {0};   // SVAR_Get writes only the variable's native size
-    ODR_t ret = cbusSvarResult(SVAR_Get(svarId, tmp));
-    if (ret != ODR_OK)
-    {
-        return ret;
-    }
-
-    OD_size_t len = (stream->dataLength < sizeof(tmp)) ? stream->dataLength : sizeof(tmp);
-    if (count < len)
+    svar_type_e type;
+    if (SVAR_GetType(svarId, &type) != GSG_SUCCESS)
     {
         return ODR_DEV_INCOMPAT;
     }
-    memcpy(buf, tmp, len);
-    *countRead = len;
+
+    if (type == SVAR_TYPE_STRING)
+    {
+        uint16_t copiedLen = 0U;
+
+        gsg_result_t res = SVAR_GetString(svarId, buf, (uint16_t)stream->dataOffset, (uint16_t)count, &copiedLen);
+
+        ODR_t ret = cbusSvarResult(res);
+        if (ret != ODR_OK)
+        {
+            return ret;
+        }
+
+        *countRead = copiedLen;
+        stream->dataLength = copiedLen; // Only valid if this is the first/only chunk
+    }
+    else
+    {
+        uint8_t tmp[8] = {0};   // SVAR_Get writes only the variable's native size
+        gsg_result_t res = SVAR_Get(svarId, tmp);
+        ODR_t ret = cbusSvarResult(res);
+        if (ret != ODR_OK)
+        {
+            return ret;
+        }
+        OD_size_t len = (stream->dataLength < sizeof(tmp)) ? stream->dataLength : sizeof(tmp);
+        if (count < len)
+        {
+            return ODR_DEV_INCOMPAT;
+        }
+        memcpy(buf, tmp, len);
+        *countRead = len;
+    }
+
     return ODR_OK;
 }
 

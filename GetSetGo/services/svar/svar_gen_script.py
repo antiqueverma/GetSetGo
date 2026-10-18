@@ -488,7 +488,9 @@ def create_app_header(data, output_dir, config_data=None, product_name='Default'
 
             # Extern module declaration
             f.write(f'/* SVAR Module */\n')
-            f.write(f'extern svar_module_t svar_module_{product_prefix};\n\n')
+            f.write(f'extern svar_module_t svar_module_{product_prefix};\n')
+            f.write(f'extern const svar_can_map_t svar_can_map_{product_prefix}[];\n')
+            f.write(f'extern const uint16_t svar_can_map_{product_prefix}_count;\n')
 
             f.write(f'#endif /* SVAR_{product_prefix}_H_ */\n')
 

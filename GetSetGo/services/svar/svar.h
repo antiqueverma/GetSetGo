@@ -13,6 +13,8 @@ gsg_result_t SVAR_GetIdFromCanId(uint32_t canId, uint32_t *id);
 
 gsg_result_t SVAR_Set(uint32_t id, void *data);
 gsg_result_t SVAR_Get(uint32_t id, void *data);
+gsg_result_t SVAR_GetString(uint32_t id, void *data, uint16_t offset, uint16_t maxLen, uint16_t *copiedLen);
+gsg_result_t SVAR_SetString(uint32_t id, const void *data, uint16_t offset, uint16_t len, uint16_t *copiedLen);
 
 gsg_result_t SVAR_SetMin(uint32_t id, void *data);
 gsg_result_t SVAR_SetMax(uint32_t id, void *data);
